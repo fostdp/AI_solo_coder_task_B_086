@@ -21,5 +21,49 @@ document.addEventListener('DOMContentLoaded', async function() {
     };
     CreepPanel.onDataUpdated = function(readings) {
     };
+
+    window.ComparisonPanel.init();
+    window.ReinforcementPanel.init();
+    window.VirtualBridge.init();
+
+    initFeatureNav();
+    initRangeDisplay();
+
     console.log('[Dashboard] Initialized OK');
 });
+
+function initFeatureNav() {
+    var navBtns = document.querySelectorAll('.nav-btn');
+    navBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            navBtns.forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+
+            var sectionId = btn.dataset.section;
+            var sections = document.querySelectorAll('.feature-section');
+            sections.forEach(function(s) { s.classList.remove('active'); });
+
+            var target = document.getElementById(sectionId);
+            if (target) target.classList.add('active');
+        });
+    });
+}
+
+function initRangeDisplay() {
+    var rangeMap = {
+        'vbSpan': 'vbSpanVal',
+        'vbRise': 'vbRiseVal',
+        'vbThickness': 'vbThicknessVal',
+        'vbLoad': 'vbLoadVal'
+    };
+    Object.keys(rangeMap).forEach(function(inputId) {
+        var input = document.getElementById(inputId);
+        var display = document.getElementById(rangeMap[inputId]);
+        if (input && display) {
+            display.textContent = input.value;
+            input.addEventListener('input', function() {
+                display.textContent = input.value;
+            });
+        }
+    });
+}

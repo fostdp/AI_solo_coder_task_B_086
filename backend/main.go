@@ -20,7 +20,9 @@ import (
 
 	"zhaozhou-bridge-monitor/config"
 	"zhaozhou-bridge-monitor/database"
+	"zhaozhou-bridge-monitor/models"
 	"zhaozhou-bridge-monitor/modules"
+	"zhaozhou-bridge-monitor/services"
 )
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
@@ -275,6 +277,102 @@ func makeBridgeGeometryHandler(cfg *config.AppConfig, fea *modules.FEASimulator)
 	}
 }
 
+func makeSpandrelComparisonHandler(compSvc *services.ComparisonService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var params struct {
+			LiveLoadPa float64 `json:"live_load_pa"`
+			DeltaTC    float64 `json:"delta_t_c"`
+		}
+		if r.Method == "POST" {
+			if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+				writeErrorResp(w, http.StatusBadRequest, err)
+				return
+			}
+		}
+		if params.LiveLoadPa == 0 {
+			params.LiveLoadPa = 4000
+		}
+
+		result, err := compSvc.CompareSpandrel(params.LiveLoadPa, params.DeltaTC)
+		if err != nil {
+			writeErrorResp(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSONResp(w, http.StatusOK, result)
+	}
+}
+
+func makeMaterialComparisonHandler(compSvc *services.ComparisonService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var params struct {
+			LiveLoadPa float64 `json:"live_load_pa"`
+			DeltaTC    float64 `json:"delta_t_c"`
+		}
+		if r.Method == "POST" {
+			if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+				writeErrorResp(w, http.StatusBadRequest, err)
+				return
+			}
+		}
+		if params.LiveLoadPa == 0 {
+			params.LiveLoadPa = 4000
+		}
+
+		result, err := compSvc.CompareMaterials(params.LiveLoadPa, params.DeltaTC)
+		if err != nil {
+			writeErrorResp(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSONResp(w, http.StatusOK, result)
+	}
+}
+
+func makeReinforcementSimulateHandler(reinfSvc *services.ReinforcementService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var params struct {
+			Configs     []models.ReinforcementConfig `json:"configs"`
+			LiveLoadPa  float64                      `json:"live_load_pa"`
+			DeltaTC     float64                      `json:"delta_t_c"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+			writeErrorResp(w, http.StatusBadRequest, err)
+			return
+		}
+		if params.LiveLoadPa == 0 {
+			params.LiveLoadPa = 4000
+		}
+		if len(params.Configs) == 0 {
+			params.Configs = []models.ReinforcementConfig{
+				{Zone: "main_arch", Layers: 2, ThicknessMM: 0.334, WidthM: 1.0},
+			}
+		}
+
+		result, err := reinfSvc.SimulateReinforcement(params.Configs, params.LiveLoadPa, params.DeltaTC)
+		if err != nil {
+			writeErrorResp(w, http.StatusInternalServerError, err)
+			return
+		}
+		writeJSONResp(w, http.StatusOK, result)
+	}
+}
+
+func makeVirtualBridgeDesignHandler(vbSvc *services.VirtualBridgeService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var design models.VirtualBridgeDesign
+		if err := json.NewDecoder(r.Body).Decode(&design); err != nil {
+			writeErrorResp(w, http.StatusBadRequest, err)
+			return
+		}
+
+		result, err := vbSvc.DesignAndTest(design)
+		if err != nil {
+			writeErrorResp(w, http.StatusBadRequest, err)
+			return
+		}
+		writeJSONResp(w, http.StatusOK, result)
+	}
+}
+
 func main() {
 	configPath := flag.String("config", "../config/bridge_config.json", "Path to config file")
 	dbStr := flag.String("db", "postgres://bridge_admin:bridge2024@localhost:5432/zhaozhou_bridge?sslmode=disable", "DB connection string")
@@ -304,6 +402,10 @@ func main() {
 	creepPredictor := modules.NewCreepPredictor(cfg, db, bus, feaSimulator.FEMService)
 	alarmMQTT := modules.NewAlarmMQTT(cfg, db, bus)
 
+	comparisonSvc := services.NewComparisonService(feaSimulator.FEMService)
+	reinforcementSvc := services.NewReinforcementService(feaSimulator.FEMService)
+	virtualBridgeSvc := services.NewVirtualBridgeService()
+
 	modules.SetGoroutineFunc(func() int { return runtime.NumGoroutine() })
 
 	r := mux.NewRouter()
@@ -327,6 +429,10 @@ func main() {
 	api.HandleFunc("/deformation/predict50", makePredict50Handler(bus)).Methods("POST")
 	api.HandleFunc("/alerts", makeGetAlertsHandler(db)).Methods("GET")
 	api.HandleFunc("/bridge/geometry", makeBridgeGeometryHandler(cfg, feaSimulator)).Methods("GET")
+	api.HandleFunc("/comparison/spandrel", makeSpandrelComparisonHandler(comparisonSvc)).Methods("GET", "POST")
+	api.HandleFunc("/comparison/materials", makeMaterialComparisonHandler(comparisonSvc)).Methods("GET", "POST")
+	api.HandleFunc("/reinforcement/simulate", makeReinforcementSimulateHandler(reinforcementSvc)).Methods("POST")
+	api.HandleFunc("/virtual-bridge/design", makeVirtualBridgeDesignHandler(virtualBridgeSvc)).Methods("POST")
 
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./frontend")))
 

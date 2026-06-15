@@ -23,126 +23,261 @@
             </div>
         </header>
 
-        <main class="dashboard-main">
-            <section class="viewport-section">
-                <h2>三维结构仿真视图</h2>
-                <div class="viewport-toolbar">
-                    <button class="toolbar-btn" id="btnStress">应力云图</button>
-                    <button class="toolbar-btn" id="btnCrack">显示裂缝标记</button>
-                    <button class="toolbar-btn" id="btnReset">重置视角</button>
-                    <button class="toolbar-btn" id="btnRotate">自动旋转</button>
-                    <button class="toolbar-btn" id="btnPredict">预测50年变形</button>
+        <nav class="feature-nav">
+            <button class="nav-btn active" data-section="section-monitor">实时监测</button>
+            <button class="nav-btn" data-section="section-comparison">力学对比</button>
+            <button class="nav-btn" data-section="section-reinforcement">加固仿真</button>
+            <button class="nav-btn" data-section="section-virtual">虚拟建桥</button>
+        </nav>
+
+        <section class="feature-section active" id="section-monitor">
+            <div class="dashboard-main">
+                <section class="viewport-section">
+                    <h2>三维结构仿真视图</h2>
+                    <div class="viewport-toolbar">
+                        <button class="toolbar-btn" id="btnStress">应力云图</button>
+                        <button class="toolbar-btn" id="btnCrack">显示裂缝标记</button>
+                        <button class="toolbar-btn" id="btnReset">重置视角</button>
+                        <button class="toolbar-btn" id="btnRotate">自动旋转</button>
+                        <button class="toolbar-btn" id="btnPredict">预测50年变形</button>
+                    </div>
+                    <div class="viewport-canvas-wrap" id="viewport3d"></div>
+                </section>
+
+                <div class="left-column">
+                    <div class="metrics-grid">
+                        <div class="metric-card safe" id="metricArch">
+                            <div class="metric-header">
+                                <span class="metric-label">拱券应变</span>
+                                <span class="metric-sensor">ARCH-001</span>
+                            </div>
+                            <div class="metric-value-row">
+                                <span class="metric-value" id="valArch">--</span>
+                                <span class="metric-unit">με</span>
+                            </div>
+                            <div class="metric-sparkline">
+                                <canvas id="sparkArch"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="metric-card warning" id="metricPier">
+                            <div class="metric-header">
+                                <span class="metric-label">桥墩沉降</span>
+                                <span class="metric-sensor">PIER-001/002</span>
+                            </div>
+                            <div class="metric-value-row">
+                                <span class="metric-value" id="valPier">--</span>
+                                <span class="metric-unit">mm</span>
+                            </div>
+                            <div class="metric-secondary" id="valPier2">PIER-002: -- mm</div>
+                            <div class="metric-sparkline">
+                                <canvas id="sparkPier"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="metric-card safe" id="metricTemp">
+                            <div class="metric-header">
+                                <span class="metric-label">桥面温度</span>
+                                <span class="metric-sensor">AVG</span>
+                            </div>
+                            <div class="metric-value-row">
+                                <span class="metric-value" id="valTemp">--</span>
+                                <span class="metric-unit">℃</span>
+                            </div>
+                            <div class="metric-secondary" id="valTempRange">最高: -- / 最低: --</div>
+                            <div class="metric-sparkline">
+                                <canvas id="sparkTemp"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="metric-card critical" id="metricCrack">
+                            <div class="metric-header">
+                                <span class="metric-label">裂缝宽度</span>
+                                <span class="metric-sensor">CRACK-001</span>
+                            </div>
+                            <div class="metric-value-row">
+                                <span class="metric-value" id="valCrack">--</span>
+                                <span class="metric-unit">mm</span>
+                            </div>
+                            <div class="metric-secondary" id="valCrackThreshold">限值: 0.3 / 0.5 mm</div>
+                            <div class="metric-sparkline">
+                                <canvas id="sparkCrack"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-section">
+                        <div class="chart-tabs">
+                            <button class="tab-btn active" data-tab="realtime">实时数据</button>
+                            <button class="tab-btn" data-tab="stress">应力分布</button>
+                            <button class="tab-btn" data-tab="predict">变形预测</button>
+                        </div>
+                        <div class="chart-panels">
+                            <div class="chart-panel active" id="panel-realtime">
+                                <h3>过去24小时传感器数据趋势</h3>
+                                <div class="chart-wrapper">
+                                    <canvas id="chartRealtime"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-panel" id="panel-stress">
+                                <h3>各部位应力分布 (von Mises / MPa)</h3>
+                                <div class="chart-wrapper">
+                                    <canvas id="chartStress"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-panel" id="panel-predict">
+                                <h3>未来50年长期变形预测</h3>
+                                <div class="chart-wrapper">
+                                    <canvas id="chartPredict"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="viewport-canvas-wrap" id="viewport3d"></div>
-            </section>
 
-            <div class="left-column">
-                <div class="metrics-grid">
-                    <div class="metric-card safe" id="metricArch">
-                        <div class="metric-header">
-                            <span class="metric-label">拱券应变</span>
-                            <span class="metric-sensor">ARCH-001</span>
+                <aside class="right-column">
+                    <div class="alerts-section">
+                        <div class="alerts-header">
+                            <h2>系统告警</h2>
+                            <div class="alert-stats" id="alertStats">
+                                <span class="stat-critical">0 严重</span>
+                                <span class="stat-warning">0 警告</span>
+                                <span class="stat-info">0 信息</span>
+                            </div>
                         </div>
-                        <div class="metric-value-row">
-                            <span class="metric-value" id="valArch">--</span>
-                            <span class="metric-unit">με</span>
-                        </div>
-                        <div class="metric-sparkline">
-                            <canvas id="sparkArch"></canvas>
+                        <div class="alerts-list" id="alertsList">
+                            <div class="alert-empty">暂无告警</div>
                         </div>
                     </div>
+                </aside>
+            </div>
+        </section>
 
-                    <div class="metric-card warning" id="metricPier">
-                        <div class="metric-header">
-                            <span class="metric-label">桥墩沉降</span>
-                            <span class="metric-sensor">PIER-001/002</span>
-                        </div>
-                        <div class="metric-value-row">
-                            <span class="metric-value" id="valPier">--</span>
-                            <span class="metric-unit">mm</span>
-                        </div>
-                        <div class="metric-secondary" id="valPier2">PIER-002: -- mm</div>
-                        <div class="metric-sparkline">
-                            <canvas id="sparkPier"></canvas>
-                        </div>
-                    </div>
+        <section class="feature-section" id="section-comparison">
+            <div class="feature-panel">
+                <h2>拱桥力学性能对比分析</h2>
+                <p class="feature-desc">对比分析敞肩拱与实肩拱的力学性能差异，以及古代石拱桥与现代钢筋混凝土拱桥的跨时代材料对比</p>
 
-                    <div class="metric-card safe" id="metricTemp">
-                        <div class="metric-header">
-                            <span class="metric-label">桥面温度</span>
-                            <span class="metric-sensor">AVG</span>
-                        </div>
-                        <div class="metric-value-row">
-                            <span class="metric-value" id="valTemp">--</span>
-                            <span class="metric-unit">℃</span>
-                        </div>
-                        <div class="metric-secondary" id="valTempRange">最高: -- / 最低: --</div>
-                        <div class="metric-sparkline">
-                            <canvas id="sparkTemp"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="metric-card critical" id="metricCrack">
-                        <div class="metric-header">
-                            <span class="metric-label">裂缝宽度</span>
-                            <span class="metric-sensor">CRACK-001</span>
-                        </div>
-                        <div class="metric-value-row">
-                            <span class="metric-value" id="valCrack">--</span>
-                            <span class="metric-unit">mm</span>
-                        </div>
-                        <div class="metric-secondary" id="valCrackThreshold">限值: 0.3 / 0.5 mm</div>
-                        <div class="metric-sparkline">
-                            <canvas id="sparkCrack"></canvas>
-                        </div>
-                    </div>
+                <div class="comparison-actions">
+                    <button class="action-btn primary" id="btnSpandrelComp">敞肩拱 vs 实肩拱对比</button>
+                    <button class="action-btn secondary" id="btnMaterialComp">古石桥 vs 现代RC对比</button>
                 </div>
 
-                <div class="charts-section">
-                    <div class="chart-tabs">
-                        <button class="tab-btn active" data-tab="realtime">实时数据</button>
-                        <button class="tab-btn" data-tab="stress">应力分布</button>
-                        <button class="tab-btn" data-tab="predict">变形预测</button>
-                    </div>
-                    <div class="chart-panels">
-                        <div class="chart-panel active" id="panel-realtime">
-                            <h3>过去24小时传感器数据趋势</h3>
-                            <div class="chart-wrapper">
-                                <canvas id="chartRealtime"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-panel" id="panel-stress">
-                            <h3>各部位应力分布 (von Mises / MPa)</h3>
-                            <div class="chart-wrapper">
-                                <canvas id="chartStress"></canvas>
-                            </div>
-                        </div>
-                        <div class="chart-panel" id="panel-predict">
-                            <h3>未来50年长期变形预测</h3>
-                            <div class="chart-wrapper">
-                                <canvas id="chartPredict"></canvas>
-                            </div>
-                        </div>
-                    </div>
+                <div class="comparison-results">
+                    <div id="spandrelResult"></div>
+                    <div id="materialResult"></div>
                 </div>
             </div>
+        </section>
 
-            <aside class="right-column">
-                <div class="alerts-section">
-                    <div class="alerts-header">
-                        <h2>系统告警</h2>
-                        <div class="alert-stats" id="alertStats">
-                            <span class="stat-critical">0 严重</span>
-                            <span class="stat-warning">0 警告</span>
-                            <span class="stat-info">0 信息</span>
+        <section class="feature-section" id="section-reinforcement">
+            <div class="feature-panel">
+                <h2>拱券碳纤维布加固方案仿真</h2>
+                <p class="feature-desc">模拟碳纤维增强聚合物(CFRP)布粘贴加固拱券后的力学性能变化，评估加固效果与安全性提升</p>
+
+                <div class="reinf-config">
+                    <h3>加固参数配置</h3>
+                    <div class="reinf-options">
+                        <div class="reinf-option-group">
+                            <label>加固区域</label>
+                            <div class="reinf-checkboxes">
+                                <label class="reinf-check-label"><input type="checkbox" class="reinf-zone-check" value="main_arch" checked> 主拱券</label>
+                                <label class="reinf-check-label"><input type="checkbox" class="reinf-zone-check" value="left_spandrel"> 左侧肩墙</label>
+                                <label class="reinf-check-label"><input type="checkbox" class="reinf-zone-check" value="right_spandrel"> 右侧肩墙</label>
+                                <label class="reinf-check-label"><input type="checkbox" class="reinf-zone-check" value="full"> 全桥加固</label>
+                            </div>
+                        </div>
+                        <div class="reinf-option-group">
+                            <label>CFRP层数</label>
+                            <select id="reinfLayers">
+                                <option value="1">1层 (0.167mm)</option>
+                                <option value="2" selected>2层 (0.334mm)</option>
+                                <option value="3">3层 (0.501mm)</option>
+                                <option value="5">5层 (0.835mm)</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="alerts-list" id="alertsList">
-                        <div class="alert-empty">暂无告警</div>
+                    <button class="action-btn primary" id="btnReinfSimulate">开始加固仿真</button>
+                </div>
+
+                <div id="reinfResult"></div>
+            </div>
+        </section>
+
+        <section class="feature-section" id="section-virtual">
+            <div class="feature-panel">
+                <h2>公众虚拟建桥体验</h2>
+                <p class="feature-desc">设计你的拱桥！调整参数观察拱券形状变化，然后运行承重仿真测试你的设计是否安全</p>
+
+                <div class="vb-layout">
+                    <div class="vb-design-panel">
+                        <h3>拱桥设计参数</h3>
+                        <div class="vb-presets">
+                            <span class="vb-preset-label">快速预设：</span>
+                            <button class="vb-preset-btn" data-preset="zhaozhou">赵州桥</button>
+                            <button class="vb-preset-btn" data-preset="roman">罗马石拱</button>
+                            <button class="vb-preset-btn" data-preset="modern_rc">现代RC桥</button>
+                            <button class="vb-preset-btn" data-preset="steel">钢拱桥</button>
+                        </div>
+                        <div class="vb-params">
+                            <div class="vb-param">
+                                <label>跨径 (m)</label>
+                                <input type="range" id="vbSpan" min="5" max="200" value="37" step="1">
+                                <span class="vb-param-val" id="vbSpanVal">37</span>
+                            </div>
+                            <div class="vb-param">
+                                <label>矢高 (m)</label>
+                                <input type="range" id="vbRise" min="1" max="50" value="7" step="0.5">
+                                <span class="vb-param-val" id="vbRiseVal">7</span>
+                            </div>
+                            <div class="vb-param">
+                                <label>拱券线型</label>
+                                <select id="vbShape">
+                                    <option value="parabolic">抛物线</option>
+                                    <option value="circular">圆弧</option>
+                                    <option value="catenary">悬链线</option>
+                                </select>
+                            </div>
+                            <div class="vb-param">
+                                <label>敞肩拱数量</label>
+                                <select id="vbSmallArches">
+                                    <option value="0">0 (实肩拱)</option>
+                                    <option value="2">2 (1对)</option>
+                                    <option value="4" selected>4 (2对·赵州桥式)</option>
+                                    <option value="6">6 (3对)</option>
+                                </select>
+                            </div>
+                            <div class="vb-param">
+                                <label>拱券厚度 (m)</label>
+                                <input type="range" id="vbThickness" min="0.3" max="5" value="1.0" step="0.1">
+                                <span class="vb-param-val" id="vbThicknessVal">1.0</span>
+                            </div>
+                            <div class="vb-param">
+                                <label>建筑材料</label>
+                                <select id="vbMaterial">
+                                    <option value="ancient_stone">青砂岩 (古代)</option>
+                                    <option value="modern_rc">钢筋混凝土 (现代)</option>
+                                    <option value="steel">钢材 (现代)</option>
+                                </select>
+                            </div>
+                            <div class="vb-param">
+                                <label>活荷载 (kPa)</label>
+                                <input type="range" id="vbLoad" min="0" max="50" value="4" step="1">
+                                <span class="vb-param-val" id="vbLoadVal">4</span>
+                            </div>
+                        </div>
+                        <button class="action-btn primary large" id="vbRunTest">🏗️ 运行承重仿真测试</button>
+                    </div>
+
+                    <div class="vb-preview-panel">
+                        <h3>拱券预览</h3>
+                        <canvas id="vbCanvas" width="600" height="350"></canvas>
                     </div>
                 </div>
-            </aside>
-        </main>
+
+                <div id="vbTestResult"></div>
+            </div>
+        </section>
 
         <footer class="dashboard-footer">
             <div class="footer-status">
@@ -160,6 +295,9 @@
     <script src="js/stress_cloud_map.js"></script>
     <script src="js/zhaozhou_bridge_3d.js"></script>
     <script src="js/creep_panel.js"></script>
+    <script src="js/comparison_panel.js"></script>
+    <script src="js/reinforcement_panel.js"></script>
+    <script src="js/virtual_bridge.js"></script>
     <script src="js/dashboard.js"></script>
 </body>
 </html>
