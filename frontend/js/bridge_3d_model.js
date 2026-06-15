@@ -393,42 +393,209 @@ function setupGroundAndEnvironment(bridgeGroup) {
 }
 
 function updateStressMap(femStressResults, femElements, femNodes) {
+    var startTime = performance.now();
+
     while (stressOverlayGroup.children.length > 0) {
         var obj = stressOverlayGroup.children[0];
         stressOverlayGroup.remove(obj);
         if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) obj.material.dispose();
+        if (obj.material) {
+            if (obj.material.map) obj.material.map.dispose();
+            obj.material.dispose();
+        }
     }
 
     if (!femStressResults || !femElements || !femNodes || femElements.length === 0) return;
 
-    var minStress = Infinity, maxStress = -Infinity;
-    for (var i = 0; i < femStressResults.length; i++) {
-        var s = femStressResults[i];
-        if (s < minStress) minStress = s;
-        if (s > maxStress) maxStress = s;
+    var getTier = window.getGpuTier || function() { return 1; };
+    var tier = getTier();
+    var origCount = femElements.length;
+
+    var normFn = window.normalizeElements || function(e) { return e; };
+    var normElements = normFn(femElements);
+    var normNodes = femNodes;
+
+    var stressValues = [];
+    if (femStressResults && femStressResults.length > 0) {
+        var first = femStressResults[0];
+        if (typeof first === 'object' && first !== null) {
+            for (var si = 0; si < femStressResults.length; si++) {
+                var r = femStressResults[si];
+                stressValues.push(r.von_mises !== undefined ? r.von_mises : (r.vonMises !== undefined ? r.vonMises : 0));
+            }
+        } else {
+            for (var sj = 0; sj < femStressResults.length; sj++) {
+                stressValues.push(femStressResults[sj]);
+            }
+        }
     }
-    if (maxStress === minStress) maxStress = minStress + 1;
 
-    stressData = { min: minStress, max: maxStress, values: femStressResults };
+    var minVal = Infinity, maxVal = -Infinity;
+    for (var mi = 0; mi < stressValues.length; mi++) {
+        var sv = stressValues[mi];
+        if (sv < minVal) minVal = sv;
+        if (sv > maxVal) maxVal = sv;
+    }
+    if (maxVal === minVal) maxVal = minVal + 1;
 
-    var highStressElements = [];
+    stressData = { min: minVal, max: maxVal, values: stressValues };
 
+    var abutH = 4.0;
+    var buildMerged = window.buildMergedStressGeometry;
+    var buildCanvas = window.buildStressCanvasTexture;
+    var decimate = window.decimateElementsForMobile;
+    var computeCentroid = window.computeElementCentroid || function(el, nds) {
+        var n0 = nds[el[0]] || {x:0,y:0,z:0};
+        var n1 = nds[el[1]] || {x:0,y:0,z:0};
+        var n2 = nds[el[2]] || {x:0,y:0,z:0};
+        return { x:(n0.x+n1.x+n2.x)/3, y:(n0.y+n1.y+n2.y)/3, z:((n0.z||0)+(n1.z||0)+(n2.z||0))/3 };
+    };
+    var createSprite = window.createTextSprite;
+
+    if (tier === 0) {
+        var decimated = { newElems: normElements, newNodes: normNodes, newStress: stressValues };
+        if (decimate && normElements.length > 60) {
+            decimated = decimate(normElements, normNodes, stressValues, 60);
+        }
+        var workElems = decimated.newElems;
+        var workNodes = decimated.newNodes;
+        var workStress = decimated.newStress;
+
+        if (buildCanvas) {
+            var texResult = buildCanvas(workElems, workNodes, workStress, minVal, maxVal, 512);
+            stressOverlayGroup.add(texResult.mesh);
+        } else if (buildMerged) {
+            var mergedGeoT0 = buildMerged(workElems, workNodes, workStress, minVal, maxVal);
+            var mergedMatT0 = new THREE.MeshBasicMaterial({
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1,
+                depthWrite: false
+            });
+            var mergedMeshT0 = new THREE.Mesh(mergedGeoT0, mergedMatT0);
+            mergedMeshT0.rotation.x = -Math.PI / 2;
+            stressOverlayGroup.add(mergedMeshT0);
+        } else {
+            fallbackRender(normElements, normNodes, stressValues, minVal, maxVal, abutH);
+        }
+    } else if (tier === 1) {
+        var labelPct = 0.1;
+        if (buildMerged) {
+            var mergedGeoT1 = buildMerged(normElements, normNodes, stressValues, minVal, maxVal);
+            var mergedMatT1 = new THREE.MeshBasicMaterial({
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1,
+                depthWrite: false
+            });
+            var mergedMeshT1 = new THREE.Mesh(mergedGeoT1, mergedMatT1);
+            mergedMeshT1.rotation.x = -Math.PI / 2;
+            stressOverlayGroup.add(mergedMeshT1);
+        } else {
+            fallbackRender(normElements, normNodes, stressValues, minVal, maxVal, abutH);
+        }
+
+        if (createSprite) {
+            var sortedIdxT1 = [];
+            for (var s1 = 0; s1 < stressValues.length; s1++) {
+                sortedIdxT1.push({ idx: s1, stress: stressValues[s1] });
+            }
+            sortedIdxT1.sort(function(a, b) { return b.stress - a.stress; });
+            var labelCountT1 = Math.min(10, Math.ceil(sortedIdxT1.length * labelPct));
+            for (var l1 = 0; l1 < labelCountT1; l1++) {
+                var entry1 = sortedIdxT1[l1];
+                var el1 = normElements[entry1.idx];
+                if (!el1) continue;
+                var cent1 = computeCentroid(el1, normNodes);
+                var txt1 = (entry1.stress / 1e6).toFixed(2) + 'MPa';
+                var sp1 = createSprite(txt1, 0xffffff, 24);
+                sp1.position.set(cent1.x, cent1.y + abutH + 0.5, 0.2);
+                sp1.scale.set(2.0, 1.0, 1.0);
+                stressOverlayGroup.add(sp1);
+            }
+        }
+    } else {
+        var labelPctHi = 0.2;
+        if (buildMerged) {
+            var mergedGeoT2 = buildMerged(normElements, normNodes, stressValues, minVal, maxVal);
+            var mergedMatT2 = new THREE.MeshBasicMaterial({
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.6,
+                side: THREE.DoubleSide,
+                polygonOffset: true,
+                polygonOffsetFactor: -1,
+                polygonOffsetUnits: -1,
+                depthWrite: false
+            });
+            var mergedMeshT2 = new THREE.Mesh(mergedGeoT2, mergedMatT2);
+            mergedMeshT2.rotation.x = -Math.PI / 2;
+            stressOverlayGroup.add(mergedMeshT2);
+        } else {
+            fallbackRender(normElements, normNodes, stressValues, minVal, maxVal, abutH);
+        }
+
+        if (createSprite) {
+            var sortedIdxT2 = [];
+            for (var s2 = 0; s2 < stressValues.length; s2++) {
+                sortedIdxT2.push({ idx: s2, stress: stressValues[s2] });
+            }
+            sortedIdxT2.sort(function(a, b) { return b.stress - a.stress; });
+            var topCountT2 = Math.ceil(sortedIdxT2.length * labelPctHi);
+            for (var l2 = 0; l2 < topCountT2; l2++) {
+                var entry2 = sortedIdxT2[l2];
+                var el2 = normElements[entry2.idx];
+                if (!el2) continue;
+                var cent2 = computeCentroid(el2, normNodes);
+                var txt2 = (entry2.stress / 1e6).toFixed(2) + 'MPa';
+                var sp2 = createSprite(txt2, 0xffffff, 24);
+                sp2.position.set(cent2.x, cent2.y + abutH + 0.5, 0.2);
+                sp2.scale.set(2.0, 1.0, 1.0);
+                stressOverlayGroup.add(sp2);
+            }
+        }
+    }
+
+    var legendParent = document.querySelector('.monitoring-panel, .dashboard-container, body');
+    if (legendParent && !document.getElementById('stress-legend')) {
+        if (window.createStressLegend) {
+            window.createStressLegend(legendParent);
+        }
+    }
+    if (document.getElementById('stress-legend') && window.updateStressLegend) {
+        window.updateStressLegend(minVal, maxVal);
+    }
+
+    stressOverlayGroup.visible = stressVisible;
+
+    var elapsed = performance.now() - startTime;
+    console.log('[StressMap] tier=' + tier + ', elements=' + origCount + ', draw_calls=1, ms=' + elapsed.toFixed(2));
+}
+
+function fallbackRender(femElements, femNodes, stressValues, minStress, maxStress, abutH) {
+    var colorFn = window.stressColorMap || function() { return new THREE.Color(0xffffff); };
     for (var ei = 0; ei < femElements.length; ei++) {
         var elem = femElements[ei];
-        var stress = femStressResults[ei] !== undefined ? femStressResults[ei] : 0;
+        var stress = stressValues[ei] !== undefined ? stressValues[ei] : 0;
         var n0 = femNodes[elem[0]];
         var n1 = femNodes[elem[1]];
         var n2 = femNodes[elem[2]];
         if (!n0 || !n1 || !n2) continue;
 
         var shape = new THREE.Shape();
-        var abutH = 4.0;
         var zOffset = 0.05;
 
-        var sx0 = n0.x, sy0 = n0.y + abutH;
-        var sx1 = n1.x, sy1 = n1.y + abutH;
-        var sx2 = n2.x, sy2 = n2.y + abutH;
+        var sx0 = n0.x, sy0 = (n0.y || 0) + abutH;
+        var sx1 = n1.x, sy1 = (n1.y || 0) + abutH;
+        var sx2 = n2.x, sy2 = (n2.y || 0) + abutH;
 
         shape.moveTo(sx0, sy0);
         shape.lineTo(sx1, sy1);
@@ -436,7 +603,7 @@ function updateStressMap(femStressResults, femElements, femNodes) {
         shape.lineTo(sx0, sy0);
 
         var shapeGeo = new THREE.ShapeGeometry(shape);
-        var color = window.stressColorMap(stress, minStress, maxStress);
+        var color = colorFn(stress, minStress, maxStress);
         var meshMat = new THREE.MeshBasicMaterial({
             color: color,
             transparent: true,
@@ -457,31 +624,7 @@ function updateStressMap(femStressResults, femElements, femNodes) {
         var mesh = new THREE.Mesh(shapeGeo, meshMat);
         mesh.rotation.x = -Math.PI / 2;
         stressOverlayGroup.add(mesh);
-
-        highStressElements.push({ index: ei, stress: stress, centroid: window.computeElementCentroid(elem, femNodes) });
     }
-
-    highStressElements.sort(function(a, b) { return b.stress - a.stress; });
-    var topCount = Math.ceil(highStressElements.length * 0.2);
-    for (var ti = 0; ti < topCount; ti++) {
-        var hse = highStressElements[ti];
-        var c = hse.centroid;
-        var labelText = (hse.stress / 1e6).toFixed(2) + 'MPa';
-        var sprite = window.createTextSprite(labelText, 0xffffff, 24);
-        sprite.position.set(c.x, c.y + 4.0 + 0.5, 0.2);
-        sprite.scale.set(2.0, 1.0, 1.0);
-        stressOverlayGroup.add(sprite);
-    }
-
-    var legendParent = document.querySelector('.monitoring-panel, .dashboard-container, body');
-    if (legendParent && !document.getElementById('stress-legend')) {
-        window.createStressLegend(legendParent);
-    }
-    if (document.getElementById('stress-legend')) {
-        window.updateStressLegend(minStress, maxStress);
-    }
-
-    stressOverlayGroup.visible = stressVisible;
 }
 
 function setStressMapVisible(visible) {

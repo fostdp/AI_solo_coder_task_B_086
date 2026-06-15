@@ -16,6 +16,12 @@ type DeformationPredictor struct {
 	AnnualTempMean           float64
 	CreepPhiInf              float64
 	CreepBeta                float64
+	StoneAgeDays             float64
+	ConstructionYear         int
+	AgeCorrectionFactor      float64
+	HumidityPercent          float64
+	StoneEffectiveThickness  float64
+	CreepLoadingAgeDays      float64
 }
 
 func NewDeformationPredictor(fem *FEMService) *DeformationPredictor {
@@ -43,7 +49,7 @@ func NewDeformationPredictor(fem *FEMService) *DeformationPredictor {
 			SmallArchRiseSmall: 1.0,
 		}
 	}
-	return &DeformationPredictor{
+	p := &DeformationPredictor{
 		Material:                 mat,
 		Geometry:                 geom,
 		FEMService:               fem,
@@ -51,7 +57,14 @@ func NewDeformationPredictor(fem *FEMService) *DeformationPredictor {
 		AnnualTempMean:           12.0,
 		CreepPhiInf:              2.0,
 		CreepBeta:                0.3,
+		ConstructionYear:         605,
+		HumidityPercent:          65.0,
+		StoneEffectiveThickness:  0.6,
+		CreepLoadingAgeDays:      28.0,
 	}
+	p.StoneAgeDays = float64(2026-605) * 365.25
+	p.AgeCorrectionFactor = p.computeAgeCorrectionFactor()
+	return p
 }
 
 func (p *DeformationPredictor) TemperatureAtTime(t time.Time) float64 {
@@ -59,7 +72,60 @@ func (p *DeformationPredictor) TemperatureAtTime(t time.Time) float64 {
 	return p.AnnualTempMean + p.AnnualTempCycleAmplitude*math.Sin(2*math.Pi*(dayOfYear-80)/365)
 }
 
-func (p *DeformationPredictor) CreepFactor(tDays float64) float64 {
+func (p *DeformationPredictor) betaH() float64 {
+	h := p.HumidityPercent
+	if h >= 90.0 {
+		return 1.0
+	}
+	alphaH := 0.8
+	return 1.0 + alphaH*(1.0-h/100.0)
+}
+
+func (p *DeformationPredictor) betaT0(t0 float64) float64 {
+	return 1.0 / (0.1 + math.Pow(math.Max(t0, 1.0), 0.2))
+}
+
+func (p *DeformationPredictor) computeAgeCorrectionFactor() float64 {
+	phiBaseInf := 2.0
+	betaHVal := p.betaH()
+	fcmMPa := p.Material.CompressiveStrength / 1e6
+	if fcmMPa < 1.0 {
+		fcmMPa = 25.0
+	}
+	betaFcm := 0.7 + 1.0/math.Sqrt(fcmMPa/10.0)
+	t0Ancient := p.StoneAgeDays
+	betaT0Ancient := p.betaT0(t0Ancient)
+	tRef := 36500.0
+	kStiffening := 0.25
+	betaAgeArch := math.Exp(-kStiffening * math.Log(p.StoneAgeDays/tRef))
+	phiInfAncient := phiBaseInf * betaHVal * betaFcm * betaT0Ancient * betaAgeArch
+	t0New := 28.0
+	betaT0New := p.betaT0(t0New)
+	betaAgeArchNew := 1.0
+	phiInfNew := phiBaseInf * betaHVal * betaFcm * betaT0New * betaAgeArchNew
+	if phiInfNew < 1e-20 {
+		return 1.0
+	}
+	return phiInfAncient / phiInfNew
+}
+
+func (p *DeformationPredictor) CreepFactor(tDays, loadingAgeDays float64) float64 {
+	t0 := 365.0
+	ratio := tDays / t0
+	if ratio < 0 {
+		ratio = 0
+	}
+	betaT0Factor := 1.0 / (0.1 + math.Pow(math.Max(loadingAgeDays, 1.0), 0.2))
+	return p.CreepPhiInf * (1 - math.Exp(-math.Pow(ratio, p.CreepBeta))) * betaT0Factor * p.AgeCorrectionFactor
+}
+
+func (p *DeformationPredictor) CreepFactorAged(tDaysSinceNow float64) float64 {
+	phiHistorical := p.AgeCorrectionFactor * p.originalCreepFactor(p.StoneAgeDays)
+	phiTotal := p.AgeCorrectionFactor * p.originalCreepFactor(p.StoneAgeDays+tDaysSinceNow)
+	return phiTotal - phiHistorical
+}
+
+func (p *DeformationPredictor) originalCreepFactor(tDays float64) float64 {
 	t0 := 365.0
 	ratio := tDays / t0
 	if ratio < 0 {
@@ -75,6 +141,13 @@ func (p *DeformationPredictor) ShrinkageStrain(tDays float64) float64 {
 		tDays = 0
 	}
 	return epsShInf * (1 - math.Exp(-kSh*math.Sqrt(tDays)))
+}
+
+func (p *DeformationPredictor) ShrinkageStrainAged(tDaysSinceNow float64) float64 {
+	if p.StoneAgeDays > 36500.0 {
+		return 0.0
+	}
+	return p.ShrinkageStrain(p.StoneAgeDays+tDaysSinceNow) - p.ShrinkageStrain(p.StoneAgeDays)
 }
 
 func (p *DeformationPredictor) ComputeThermalDeformation(targetYear int, refTime time.Time) ([]models.DeformationPrediction, error) {
@@ -158,9 +231,8 @@ func (p *DeformationPredictor) ComputeThermalDeformation(targetYear int, refTime
 }
 
 func (p *DeformationPredictor) ComputeCreepDeformation(targetYear int, refTime time.Time, baseDisplacements []models.FEMNode) ([]models.DeformationPrediction, error) {
-	tYears := float64(targetYear - refTime.Year())
-	tDays := tYears * 365.25
-	phi := p.CreepFactor(tDays)
+	offsetYears := float64(targetYear - refTime.Year())
+	phi := p.CreepFactorAged(offsetYears * 365.25)
 	factor := 1.0 + phi
 
 	now := time.Now()
@@ -183,9 +255,8 @@ func (p *DeformationPredictor) ComputeShrinkageDeformation(targetYear int, refTi
 	ctx := context.Background()
 	_ = ctx
 
-	tYears := float64(targetYear - refTime.Year())
-	tDays := tYears * 365.25
-	epsSh := p.ShrinkageStrain(tDays)
+	offsetYears := float64(targetYear - refTime.Year())
+	epsSh := p.ShrinkageStrainAged(offsetYears * 365.25)
 
 	alpha := p.Material.ThermalExpansionCoeff
 	if alpha < 1e-20 {
@@ -271,12 +342,11 @@ func (p *DeformationPredictor) Predict50YearDeformation(refTime time.Time) ([]mo
 			}
 		}
 
-		tYears := float64(offsetYear)
-		tDays := tYears * 365.25
-		phi := p.CreepFactor(tDays)
+		tDays := float64(offsetYear) * 365.25
+		phi := p.CreepFactorAged(tDays)
 		creepFactor := 1.0 + phi
 
-		epsSh := p.ShrinkageStrain(tDays)
+		epsSh := p.ShrinkageStrainAged(tDays)
 		alpha := p.Material.ThermalExpansionCoeff
 		if alpha < 1e-20 {
 			alpha = 5e-6
@@ -355,4 +425,17 @@ func (p *DeformationPredictor) Predict50YearDeformation(refTime time.Time) ([]mo
 	}
 
 	return allPredictions, nil
+}
+
+func (p *DeformationPredictor) GetAgeCorrectionReport() map[string]float64 {
+	return map[string]float64{
+		"stone_age_days":        p.StoneAgeDays,
+		"stone_age_years":       p.StoneAgeDays / 365.25,
+		"age_correction_factor": p.AgeCorrectionFactor,
+		"humidity_factor_beta_H": p.betaH(),
+		"loading_age_beta_t0":   p.betaT0(p.CreepLoadingAgeDays),
+		"historical_creep":      p.CreepFactor(p.StoneAgeDays, 28.0),
+		"future_creep_50y":      p.CreepFactorAged(50 * 365.25),
+		"historical_shrinkage":  p.ShrinkageStrain(p.StoneAgeDays),
+	}
 }

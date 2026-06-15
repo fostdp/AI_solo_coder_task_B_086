@@ -320,3 +320,276 @@ window.interpolateNodeDisplacements = function(x, y, femNodes, predictions) {
         dy: sumDy / sumWeights
     };
 };
+
+window.isMobileDevice = function() {
+    try {
+        var ua = navigator.userAgent || '';
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+            return true;
+        }
+        if (window.innerWidth < 768) {
+            return true;
+        }
+    } catch (e) {}
+    return false;
+};
+
+window.getGpuTier = function() {
+    try {
+        if (window.isMobileDevice()) {
+            return 0;
+        }
+        var maxTexSize = 0;
+        try {
+            var tempCanvas = document.createElement('canvas');
+            var gl = tempCanvas.getContext('webgl') || tempCanvas.getContext('experimental-webgl');
+            if (gl) {
+                maxTexSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
+            }
+        } catch (e) {}
+        if (maxTexSize > 8192) {
+            return 2;
+        }
+        return 1;
+    } catch (e) {
+        return window.isMobileDevice() ? 0 : 1;
+    }
+};
+
+window.normalizeElements = function(elements) {
+    if (!elements || !elements.length) return [];
+    var result = [];
+    for (var i = 0; i < elements.length; i++) {
+        var el = elements[i];
+        if (!el) continue;
+        if (Array.isArray(el)) {
+            result.push([el[0] | 0, el[1] | 0, el[2] | 0]);
+        } else if (el.NodeIDs && Array.isArray(el.NodeIDs)) {
+            result.push([el.NodeIDs[0] | 0, el.NodeIDs[1] | 0, el.NodeIDs[2] | 0]);
+        } else if (el.node_ids && Array.isArray(el.node_ids)) {
+            result.push([el.node_ids[0] | 0, el.node_ids[1] | 0, el.node_ids[2] | 0]);
+        } else {
+            result.push([0, 0, 0]);
+        }
+    }
+    return result;
+};
+
+window.buildMergedStressGeometry = function(elements, nodes, stressValues, minVal, maxVal) {
+    var normElems = window.normalizeElements(elements);
+    var elemCount = normElems.length;
+    var posArr = new Float32Array(elemCount * 3 * 3);
+    var colArr = new Float32Array(elemCount * 3 * 3);
+    var idxArr = new (elemCount * 3 > 65535 ? Uint32Array : Uint16Array)(elemCount * 3);
+    var abutH = 4.0;
+    var zOffset = 0.2;
+    var posIdx = 0;
+    var colIdx = 0;
+    var idxIdx = 0;
+
+    for (var ei = 0; ei < elemCount; ei++) {
+        var elem = normElems[ei];
+        var n0 = nodes[elem[0]];
+        var n1 = nodes[elem[1]];
+        var n2 = nodes[elem[2]];
+        if (!n0 || !n1 || !n2) continue;
+
+        var stress = stressValues[ei] !== undefined ? stressValues[ei] : 0;
+        var color = window.stressColorMap(stress, minVal, maxVal);
+
+        var vBase = ei * 3;
+        posArr[posIdx++] = n0.x;
+        posArr[posIdx++] = (n0.y || 0) + abutH;
+        posArr[posIdx++] = zOffset;
+        posArr[posIdx++] = n1.x;
+        posArr[posIdx++] = (n1.y || 0) + abutH;
+        posArr[posIdx++] = zOffset;
+        posArr[posIdx++] = n2.x;
+        posArr[posIdx++] = (n2.y || 0) + abutH;
+        posArr[posIdx++] = zOffset;
+
+        for (var vi = 0; vi < 3; vi++) {
+            colArr[colIdx++] = color.r;
+            colArr[colIdx++] = color.g;
+            colArr[colIdx++] = color.b;
+        }
+
+        idxArr[idxIdx++] = vBase;
+        idxArr[idxIdx++] = vBase + 1;
+        idxArr[idxIdx++] = vBase + 2;
+    }
+
+    var geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colArr, 3));
+    geometry.setIndex(new THREE.BufferAttribute(idxArr, 1));
+    geometry.computeBoundingSphere();
+    return geometry;
+};
+
+window.buildStressCanvasTexture = function(elements, nodes, stressValues, minVal, maxVal, texSize) {
+    var normElems = window.normalizeElements(elements);
+    if (!texSize) texSize = 1024;
+    var abutH = 4.0;
+
+    var xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (var i = 0; i < nodes.length; i++) {
+        var nd = nodes[i];
+        if (!nd) continue;
+        if (nd.x < xMin) xMin = nd.x;
+        if (nd.x > xMax) xMax = nd.x;
+        var ny = (nd.y || 0) + abutH;
+        if (ny < yMin) yMin = ny;
+        if (ny > yMax) yMax = ny;
+    }
+    if (xMax <= xMin) { xMin = 0; xMax = 1; }
+    if (yMax <= yMin) { yMin = 0; yMax = 1; }
+
+    var xRange = xMax - xMin;
+    var yRange = yMax - yMin;
+
+    var canvas = document.createElement('canvas');
+    canvas.width = texSize;
+    canvas.height = texSize;
+    var ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, texSize, texSize);
+
+    function toCanvas(realX, realY) {
+        var u = (realX - xMin) / xRange;
+        var v = (realY - yMin) / yRange;
+        return {
+            px: u * texSize,
+            py: texSize - v * texSize
+        };
+    }
+
+    for (var ei = 0; ei < normElems.length; ei++) {
+        var elem = normElems[ei];
+        var n0 = nodes[elem[0]];
+        var n1 = nodes[elem[1]];
+        var n2 = nodes[elem[2]];
+        if (!n0 || !n1 || !n2) continue;
+
+        var stress = stressValues[ei] !== undefined ? stressValues[ei] : 0;
+        var color = window.stressColorMap(stress, minVal, maxVal);
+        var r = Math.round(color.r * 255);
+        var g = Math.round(color.g * 255);
+        var b = Math.round(color.b * 255);
+        ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',0.85)';
+
+        var p0 = toCanvas(n0.x, (n0.y || 0) + abutH);
+        var p1 = toCanvas(n1.x, (n1.y || 0) + abutH);
+        var p2 = toCanvas(n2.x, (n2.y || 0) + abutH);
+
+        ctx.beginPath();
+        ctx.moveTo(p0.px, p0.py);
+        ctx.lineTo(p1.px, p1.py);
+        ctx.lineTo(p2.px, p2.py);
+        ctx.closePath();
+        ctx.fill();
+
+        if (texSize >= 1024) {
+            ctx.strokeStyle = 'rgba(20,20,30,0.15)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+        }
+    }
+
+    var texture = new THREE.CanvasTexture(canvas);
+    texture.minFilter = THREE.LinearMipMapLinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = true;
+    texture.needsUpdate = true;
+
+    var centerX = (xMin + xMax) / 2;
+    var centerY = (yMin + yMax) / 2;
+    var planeGeo = new THREE.PlaneGeometry(xRange, yRange);
+    var planeMat = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
+        side: THREE.DoubleSide
+    });
+    var planeMesh = new THREE.Mesh(planeGeo, planeMat);
+    planeMesh.position.set(centerX, centerY, 0.3);
+    planeMesh.rotation.x = -Math.PI / 2;
+
+    return { texture: texture, mesh: planeMesh };
+};
+
+window.decimateElementsForMobile = function(elements, nodes, stressValues, maxCount) {
+    var normElems = window.normalizeElements(elements);
+    if (!maxCount) maxCount = 60;
+    if (normElems.length <= maxCount) {
+        return { newElems: normElems, newNodes: nodes, newStress: stressValues.slice() };
+    }
+
+    var abutH = 4.0;
+    var xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (var i = 0; i < nodes.length; i++) {
+        var nd = nodes[i];
+        if (!nd) continue;
+        if (nd.x < xMin) xMin = nd.x;
+        if (nd.x > xMax) xMax = nd.x;
+        var ny = (nd.y || 0) + abutH;
+        if (ny < yMin) yMin = ny;
+        if (ny > yMax) yMax = ny;
+    }
+    if (xMax <= xMin) { xMin = 0; xMax = 1; }
+    if (yMax <= yMin) { yMin = 0; yMax = 1; }
+
+    var gridSize = 4;
+    var xRange = xMax - xMin;
+    var yRange = yMax - yMin;
+    var gridCells = gridSize * gridSize;
+    var cellMaxStress = new Array(gridCells).fill(-Infinity);
+    var cellMaxIdx = new Array(gridCells).fill(-1);
+
+    for (var ei = 0; ei < normElems.length; ei++) {
+        var elem = normElems[ei];
+        var n0 = nodes[elem[0]];
+        var n1 = nodes[elem[1]];
+        var n2 = nodes[elem[2]];
+        if (!n0 || !n1 || !n2) continue;
+        var cx = (n0.x + n1.x + n2.x) / 3;
+        var cy = ((n0.y || 0) + (n1.y || 0) + (n2.y || 0)) / 3 + abutH;
+        var gx = Math.min(gridSize - 1, Math.max(0, Math.floor(((cx - xMin) / xRange) * gridSize)));
+        var gy = Math.min(gridSize - 1, Math.max(0, Math.floor(((cy - yMin) / yRange) * gridSize)));
+        var cell = gy * gridSize + gx;
+        var stress = stressValues[ei] !== undefined ? stressValues[ei] : 0;
+        if (stress > cellMaxStress[cell]) {
+            cellMaxStress[cell] = stress;
+            cellMaxIdx[cell] = ei;
+        }
+    }
+
+    var keptIndices = [];
+    for (var c = 0; c < gridCells; c++) {
+        if (cellMaxIdx[c] >= 0) {
+            keptIndices.push(cellMaxIdx[c]);
+        }
+    }
+
+    if (keptIndices.length > maxCount) {
+        keptIndices.sort(function(a, b) {
+            return (stressValues[b] || 0) - (stressValues[a] || 0);
+        });
+        keptIndices = keptIndices.slice(0, maxCount);
+    }
+
+    keptIndices.sort(function(a, b) { return a - b; });
+
+    var newElems = [];
+    var newStress = [];
+    for (var ki = 0; ki < keptIndices.length; ki++) {
+        var idx = keptIndices[ki];
+        newElems.push(normElems[idx]);
+        newStress.push(stressValues[idx] !== undefined ? stressValues[idx] : 0);
+    }
+
+    return { newElems: newElems, newNodes: nodes, newStress: newStress };
+};
