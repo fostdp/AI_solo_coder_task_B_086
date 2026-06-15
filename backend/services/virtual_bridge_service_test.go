@@ -301,7 +301,7 @@ func TestDesignAndTest_InvalidSpan(t *testing.T) {
 		span  float64
 	}{
 		{"过小", 4.9},
-		{"过大", 200.1},
+		{"过大", 120.1},
 		{"负数", -10},
 		{"零", 0},
 	}
@@ -333,7 +333,7 @@ func TestDesignAndTest_BoundarySpan(t *testing.T) {
 		span float64
 	}{
 		{"下限5m", 5.0},
-		{"上限200m", 200.0},
+		{"上限120m", 120.0},
 	}
 
 	for _, tc := range testCases {
@@ -363,7 +363,7 @@ func TestDesignAndTest_InvalidRise(t *testing.T) {
 		rise float64
 	}{
 		{"过小", 0.9},
-		{"过大", 50.1},
+		{"过大", 40.1},
 		{"负数", -5},
 	}
 
@@ -394,7 +394,7 @@ func TestDesignAndTest_BoundaryRise(t *testing.T) {
 		rise float64
 	}{
 		{"下限1m", 1.0},
-		{"上限50m", 50.0},
+		{"上限40m", 40.0},
 	}
 
 	for _, tc := range testCases {
@@ -502,8 +502,8 @@ func TestDesignAndTest_InvalidThickness(t *testing.T) {
 		name  string
 		thick float64
 	}{
-		{"过薄", 0.29},
-		{"过厚", 5.1},
+		{"过薄", 0.39},
+		{"过厚", 4.1},
 		{"负数", -1},
 	}
 
@@ -533,8 +533,8 @@ func TestDesignAndTest_BoundaryThickness(t *testing.T) {
 		name  string
 		thick float64
 	}{
-		{"下限0.3m", 0.3},
-		{"上限5m", 5.0},
+		{"下限0.4m", 0.4},
+		{"上限4m", 4.0},
 	}
 
 	for _, tc := range testCases {
@@ -583,7 +583,7 @@ func TestDesignAndTest_InvalidLiveLoad(t *testing.T) {
 		loadKPa float64
 	}{
 		{"负数", -10},
-		{"过大", 500.1},
+		{"过大", 50.1},
 	}
 
 	for _, tc := range testCases {
@@ -613,7 +613,7 @@ func TestDesignAndTest_BoundaryLiveLoad(t *testing.T) {
 		loadKPa float64
 	}{
 		{"下限0kPa", 0},
-		{"上限500kPa", 500},
+		{"上限50kPa", 50},
 	}
 
 	for _, tc := range testCases {

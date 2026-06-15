@@ -94,13 +94,17 @@ func (cs *ComparisonService) CompareMaterials(liveLoadPa, deltaTC float64) (*mod
 	}
 
 	modernMat := &models.MasonryMaterial{
+		MaterialName:           "C30钢筋混凝土",
+		Source:                 "《混凝土结构设计规范》GB 50010-2010",
+		Grade:                  "C30 (轴心抗压强度标准值fck)",
 		ElasticModulus:         30e9,
-		PoissonRatio:           0.2,
-		Density:                2500,
-		CompressiveStrength:    35e6,
-		TensileStrength:        3e6,
+		PoissonRatio:          0.2,
+		Density:               2500,
+		CompressiveStrength:    20.1e6,
+		CompressiveStrengthCube: 30e6,
+		TensileStrength:       2.01e6,
 		ThermalExpansionCoeff:  1e-5,
-		CreepCoeff:             1.5,
+		CreepCoeff:            1.5,
 	}
 	modernGeom := copyGeometry(cs.BaseFEM.Geometry)
 	modernFEM := NewFEMService(modernGeom, modernMat)
@@ -182,13 +186,17 @@ func buildComparisonCaseResult(label string, nodes []models.FEMNode, elements []
 
 func copyMaterial(m *models.MasonryMaterial) *models.MasonryMaterial {
 	return &models.MasonryMaterial{
+		MaterialName:           m.MaterialName,
+		Source:                 m.Source,
+		Grade:                  m.Grade,
 		ElasticModulus:         m.ElasticModulus,
-		PoissonRatio:           m.PoissonRatio,
-		Density:                m.Density,
+		PoissonRatio:          m.PoissonRatio,
+		Density:               m.Density,
 		CompressiveStrength:    m.CompressiveStrength,
-		TensileStrength:        m.TensileStrength,
-		ThermalExpansionCoeff:  m.ThermalExpansionCoeff,
-		CreepCoeff:             m.CreepCoeff,
+		CompressiveStrengthCube: m.CompressiveStrengthCube,
+		TensileStrength:       m.TensileStrength,
+		ThermalExpansionCoeff: m.ThermalExpansionCoeff,
+		CreepCoeff:            m.CreepCoeff,
 	}
 }
 

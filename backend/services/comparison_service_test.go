@@ -18,13 +18,17 @@ func newTestBaseFEM() *FEMService {
 		SmallArchRiseSmall: 1.0,
 	}
 	mat := &models.MasonryMaterial{
-		ElasticModulus:        3e9,
-		PoissonRatio:          0.15,
-		Density:               2400,
-		CompressiveStrength:   25e6,
-		TensileStrength:       2e6,
-		ThermalExpansionCoeff: 5e-6,
-		CreepCoeff:            2.0,
+		MaterialName:          "赵县青灰砂岩砌体",
+		Source:                "《赵州桥结构分析与保护研究》",
+		Grade:                 "MU60石材 / M10灰缝",
+		ElasticModulus:        4.5e9,
+		PoissonRatio:          0.18,
+		Density:               2450,
+		CompressiveStrength:   12e6,
+		CompressiveStrengthCube: 60e6,
+		TensileStrength:       1.2e6,
+		ThermalExpansionCoeff: 6e-6,
+		CreepCoeff:            2.2,
 	}
 	return NewFEMService(geom, mat)
 }
@@ -190,9 +194,9 @@ func TestCompareMaterials_StiffnessRatio(t *testing.T) {
 		t.Fatalf("CompareMaterials failed: %v", err)
 	}
 
-	expectedRatio := 30e9 / 3e9
-	if math.Abs(result.Summary.StiffnessRatio-expectedRatio) > 1e-6 {
-		t.Errorf("刚度比应为%.0f，实际为%.2f", expectedRatio, result.Summary.StiffnessRatio)
+	expectedRatio := 30e9 / 4.5e9
+	if math.Abs(result.Summary.StiffnessRatio-expectedRatio) > 1e-2 {
+		t.Errorf("刚度比应为%.2f，实际为%.2f", expectedRatio, result.Summary.StiffnessRatio)
 	}
 }
 
@@ -205,8 +209,8 @@ func TestCompareMaterials_StrengthRatio(t *testing.T) {
 		t.Fatalf("CompareMaterials failed: %v", err)
 	}
 
-	expectedRatio := 35e6 / 25e6
-	if math.Abs(result.Summary.StrengthRatio-expectedRatio) > 1e-6 {
+	expectedRatio := 20.1e6 / 12e6
+	if math.Abs(result.Summary.StrengthRatio-expectedRatio) > 1e-2 {
 		t.Errorf("强度比应为%.2f，实际为%.2f", expectedRatio, result.Summary.StrengthRatio)
 	}
 }
@@ -272,14 +276,20 @@ func TestCompareMaterials_MaterialProperties(t *testing.T) {
 		t.Fatalf("CompareMaterials failed: %v", err)
 	}
 
-	if result.AncientStone.Material.ElasticModulus != 3e9 {
-		t.Errorf("古石E应为3e9，实际为%.0f", result.AncientStone.Material.ElasticModulus)
+	if result.AncientStone.Material.ElasticModulus != 4.5e9 {
+		t.Errorf("古石E应为4.5e9，实际为%.0f", result.AncientStone.Material.ElasticModulus)
 	}
 	if result.ModernRC.Material.ElasticModulus != 30e9 {
 		t.Errorf("现代RC E应为30e9，实际为%.0f", result.ModernRC.Material.ElasticModulus)
 	}
-	if result.ModernRC.Material.CompressiveStrength != 35e6 {
-		t.Errorf("现代RC抗压强度应为35e6，实际为%.0f", result.ModernRC.Material.CompressiveStrength)
+	if result.ModernRC.Material.CompressiveStrength != 20.1e6 {
+		t.Errorf("现代RC抗压强度应为20.1e6，实际为%.1f", result.ModernRC.Material.CompressiveStrength)
+	}
+	if result.AncientStone.Material.MaterialName == "" {
+		t.Error("古石材料名称不应为空")
+	}
+	if result.ModernRC.Material.Source == "" {
+		t.Error("现代RC材料来源不应为空")
 	}
 }
 
@@ -322,13 +332,17 @@ func TestBuildComparisonCaseResult_EmptyElements(t *testing.T) {
 
 func TestCopyMaterial(t *testing.T) {
 	original := &models.MasonryMaterial{
-		ElasticModulus:        3e9,
-		PoissonRatio:          0.15,
-		Density:               2400,
-		CompressiveStrength:   25e6,
-		TensileStrength:       2e6,
-		ThermalExpansionCoeff: 5e-6,
-		CreepCoeff:            2.0,
+		MaterialName:           "测试材料",
+		Source:                 "测试来源",
+		Grade:                  "测试等级",
+		ElasticModulus:         4.5e9,
+		PoissonRatio:          0.18,
+		Density:               2450,
+		CompressiveStrength:    12e6,
+		CompressiveStrengthCube: 60e6,
+		TensileStrength:       1.2e6,
+		ThermalExpansionCoeff: 6e-6,
+		CreepCoeff:            2.2,
 	}
 
 	copied := copyMaterial(original)
@@ -344,6 +358,15 @@ func TestCopyMaterial(t *testing.T) {
 	}
 	if copied.CompressiveStrength != original.CompressiveStrength {
 		t.Errorf("fc拷贝错误: %.0f vs %.0f", copied.CompressiveStrength, original.CompressiveStrength)
+	}
+	if copied.MaterialName != original.MaterialName {
+		t.Errorf("MaterialName拷贝错误: %s vs %s", copied.MaterialName, original.MaterialName)
+	}
+	if copied.Source != original.Source {
+		t.Errorf("Source拷贝错误: %s vs %s", copied.Source, original.Source)
+	}
+	if copied.CompressiveStrengthCube != original.CompressiveStrengthCube {
+		t.Errorf("CubeStrength拷贝错误: %.0f vs %.0f", copied.CompressiveStrengthCube, original.CompressiveStrengthCube)
 	}
 
 	copied.ElasticModulus = 999

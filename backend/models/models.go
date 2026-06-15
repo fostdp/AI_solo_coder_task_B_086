@@ -65,13 +65,17 @@ type FEMElement struct {
 }
 
 type MasonryMaterial struct {
-	ElasticModulus       float64
-	PoissonRatio        float64
-	Density              float64
-	CompressiveStrength  float64
-	TensileStrength      float64
-	ThermalExpansionCoeff float64
-	CreepCoeff           float64
+	MaterialName           string  `json:"material_name"`
+	Source                 string  `json:"source"`
+	Grade                  string  `json:"grade"`
+	ElasticModulus         float64 `json:"elastic_modulus_pa"`
+	PoissonRatio           float64 `json:"poisson_ratio"`
+	Density                float64 `json:"density_kg_m3"`
+	CompressiveStrength    float64 `json:"compressive_strength_pa"`
+	TensileStrength        float64 `json:"tensile_strength_pa"`
+	CompressiveStrengthCube float64 `json:"compressive_strength_cube_pa"`
+	ThermalExpansionCoeff float64 `json:"thermal_expansion_coeff"`
+	CreepCoeff             float64 `json:"creep_coeff"`
 }
 
 type BridgeGeometry struct {
@@ -136,10 +140,11 @@ type MaterialCompSummary struct {
 }
 
 type ReinforcementConfig struct {
-	Zone           string  `json:"zone"`
-	Layers         int     `json:"layers"`
-	ThicknessMM    float64 `json:"thickness_mm"`
-	WidthM         float64 `json:"width_m"`
+	Zone                string  `json:"zone"`
+	Layers              int     `json:"layers"`
+	ThicknessMM         float64 `json:"thickness_mm"`
+	WidthM              float64 `json:"width_m"`
+	BondEfficiencyFactor float64 `json:"bond_efficiency_factor"`
 }
 
 type ReinforcementSimulationResult struct {
@@ -150,10 +155,13 @@ type ReinforcementSimulationResult struct {
 }
 
 type CFRPProperties struct {
-	ElasticModulusPa    float64 `json:"elastic_modulus_pa"`
-	TensileStrengthPa   float64 `json:"tensile_strength_pa"`
-	ThicknessPerLayerMM float64 `json:"thickness_per_layer_mm"`
-	DensityKgM3         float64 `json:"density_kg_m3"`
+	ElasticModulusPa       float64 `json:"elastic_modulus_pa"`
+	TensileStrengthPa      float64 `json:"tensile_strength_pa"`
+	ThicknessPerLayerMM    float64 `json:"thickness_per_layer_mm"`
+	DensityKgM3            float64 `json:"density_kg_m3"`
+	DefaultBondEfficiency  float64 `json:"default_bond_efficiency"`
+	EffectiveBondLengthMM  float64 `json:"effective_bond_length_mm"`
+	InterfaceShearStrengthPa float64 `json:"interface_shear_strength_pa"`
 }
 
 type ReinforcementSummary struct {
@@ -164,6 +172,10 @@ type ReinforcementSummary struct {
 	CostEstimate          string  `json:"cost_estimate"`
 	SafetyFactorBefore    float64 `json:"safety_factor_before"`
 	SafetyFactorAfter     float64 `json:"safety_factor_after"`
+	BondSafetyFactor      float64 `json:"bond_safety_factor"`
+	BondCheckPass         bool    `json:"bond_check_pass"`
+	AvgBondEfficiency     float64 `json:"avg_bond_efficiency"`
+	BondNote              string  `json:"bond_note"`
 }
 
 type VirtualBridgeDesign struct {
@@ -196,5 +208,9 @@ type BridgeDesignReport struct {
 	DisplacementCheck  bool    `json:"displacement_check"`
 	StressUtilization  float64 `json:"stress_utilization"`
 	DispSpanRatio      float64 `json:"disp_span_ratio"`
+	RiseSpanRatio      float64 `json:"rise_span_ratio"`
+	ThicknessSpanRatio float64 `json:"thickness_span_ratio"`
+	RationalDesign     bool    `json:"rational_design"`
+	DesignNotes        string  `json:"design_notes"`
 	Recommendation     string  `json:"recommendation"`
 }

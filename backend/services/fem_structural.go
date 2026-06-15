@@ -56,13 +56,17 @@ func NewFEMService(geom *models.BridgeGeometry, mat *models.MasonryMaterial) *FE
 	}
 	if mat == nil {
 		mat = &models.MasonryMaterial{
-			ElasticModulus:        3e9,
-			PoissonRatio:          0.15,
-			Density:               2400,
-			CompressiveStrength:   25e6,
-			TensileStrength:       2e6,
-			ThermalExpansionCoeff: 5e-6,
-			CreepCoeff:            2.0,
+			MaterialName:           "赵县青灰砂岩砌体",
+			Source:                 "《赵州桥结构分析与保护研究》+《砌体结构设计规范》GB 50003",
+			Grade:                  "MU60石材 / M10灰缝 (现状劣化评估)",
+			ElasticModulus:         4.5e9,
+			PoissonRatio:          0.18,
+			Density:               2450,
+			CompressiveStrength:   12e6,
+			TensileStrength:       1.2e6,
+			CompressiveStrengthCube: 60e6,
+			ThermalExpansionCoeff: 6e-6,
+			CreepCoeff:            2.2,
 		}
 	}
 	return &FEMService{
