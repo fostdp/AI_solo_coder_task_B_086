@@ -1,0 +1,98 @@
+{
+  "bridge": {
+    "main_span_m": 37.02,
+    "main_rise_m": 7.23,
+    "width_m": 9.6,
+    "deck_thickness_m": 0.4,
+    "arch_ring_thickness_m": 0.8,
+    "small_arch_span_large_m": 3.8,
+    "small_arch_rise_large_m": 1.5,
+    "small_arch_span_small_m": 2.8,
+    "small_arch_rise_small_m": 1.0,
+    "abutment_height_m": 4.0,
+    "construction_year_ce": 605,
+    "small_arch_positions_m": [
+      { "name": "Left-Spandrel-SA1", "x_min": 2.0, "x_max": 4.8, "span": 2.8, "rise": 1.0, "size": "small" },
+      { "name": "Left-Spandrel-SA2", "x_min": 5.8, "x_max": 9.6, "span": 3.8, "rise": 1.5, "size": "large" },
+      { "name": "Right-Spandrel-SA3", "x_min": 27.4, "x_max": 31.2, "span": 3.8, "rise": 1.5, "size": "large" },
+      { "name": "Right-Spandrel-SA4", "x_min": 32.2, "x_max": 35.0, "span": 2.8, "rise": 1.0, "size": "small" }
+    ]
+  },
+  "stone_material": {
+    "name": "赵州桥青砂岩",
+    "type": "limestone_masonry",
+    "elastic_modulus_pa": 3000000000.0,
+    "poisson_ratio": 0.15,
+    "density_kgm3": 2400.0,
+    "compressive_strength_pa": 25000000.0,
+    "tensile_strength_pa": 2000000.0,
+    "thermal_expansion_coeff_per_c": 0.000005,
+    "effective_thickness_m": 0.6
+  },
+  "creep_model": {
+    "phi_inf_new_stone": 2.0,
+    "beta_shape_exponent": 0.3,
+    "t0_ref_days": 365.0,
+    "reference_loading_age_days": 28.0,
+    "humidity_percent": 65.0,
+    "alpha_h_masonry": 0.8,
+    "archaeological_stiffening_k": 0.25,
+    "archaeological_stiffening_ref_days": 36500.0,
+    "shrinkage_eps_inf": 0.0003,
+    "shrinkage_k": 0.01,
+    "temperature_amplitude_c": 25.0,
+    "temperature_mean_c": 12.0
+  },
+  "fem_options": {
+    "use_submodeling": true,
+    "submodel_refine_factor": 3,
+    "main_arch_coarse_nodes": 12,
+    "deck_coarse_nodes": 10,
+    "default_live_load_pa": 10000.0,
+    "default_delta_t_c": 0.0
+  },
+  "thresholds": {
+    "strain_warning_micro": 400.0,
+    "strain_critical_micro": 500.0,
+    "settlement_rate_warning_mmpm": 2.0,
+    "settlement_rate_critical_mmpm": 5.0,
+    "settlement_absolute_critical_mm": 30.0,
+    "crack_width_warning_mm": 0.3,
+    "crack_width_critical_mm": 0.5,
+    "crack_growth_warning_mmpm": 0.1,
+    "crack_growth_critical_mmpm": 0.2,
+    "von_mises_warning_pa": 12000000.0,
+    "von_mises_critical_pa": 15000000.0
+  },
+  "dtu_receiver": {
+    "listen_addr": ":8080",
+    "ingest_path": "/api/sensors/data",
+    "reading_cooldown_ms": 0,
+    "max_payload_bytes": 65536,
+    "validate_range": {
+      "strain_micro_min": -5000.0,
+      "strain_micro_max": 5000.0,
+      "settlement_mm_min": -200.0,
+      "settlement_mm_max": 200.0,
+      "temperature_c_min": -40.0,
+      "temperature_c_max": 70.0,
+      "crack_width_mm_min": 0.0,
+      "crack_width_mm_max": 100.0
+    },
+    "history_window_days": 7
+  },
+  "alarm_mqtt": {
+    "broker_hostport": "localhost:1883",
+    "topic_alerts": "zhaozhou/bridge/alerts",
+    "qos": 1,
+    "retain_critical": true,
+    "cooldown_duration_minutes": 60,
+    "min_trend_points": 3,
+    "min_r2_for_trend": 0.3
+  },
+  "front_end": {
+    "data_poll_interval_ms": 10000,
+    "ws_push_interval_ms": 10000,
+    "stress_map_tier_override": "auto"
+  }
+}

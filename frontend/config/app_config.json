@@ -1,0 +1,72 @@
+{
+  "bridge": {
+    "main_span": 37.02,
+    "main_rise": 7.23,
+    "width": 9.6,
+    "construction_year": 605
+  },
+  "creep_model": {
+    "phi_inf_new_stone": 2.0,
+    "beta_shape_exponent": 0.3,
+    "t0_ref_days": 365.0,
+    "reference_loading_age_days": 28.0,
+    "humidity_percent": 65.0,
+    "alpha_h_masonry": 0.8,
+    "archaeological_stiffening_k": 0.25,
+    "archaeological_stiffening_ref_days": 36500.0,
+    "shrinkage_eps_inf": 0.0003,
+    "shrinkage_k": 0.01,
+    "temperature_amplitude_c": 25.0,
+    "temperature_mean_c": 12.0
+  },
+  "thresholds": {
+    "strain_warning_micro": 400.0,
+    "strain_critical_micro": 500.0,
+    "settlement_rate_warning_mmpm": 2.0,
+    "settlement_rate_critical_mmpm": 5.0,
+    "settlement_absolute_critical_mm": 30.0,
+    "crack_width_warning_mm": 0.3,
+    "crack_width_critical_mm": 0.5,
+    "crack_growth_warning_mmpm": 0.1,
+    "crack_growth_critical_mmpm": 0.2,
+    "von_mises_warning_pa": 12000000.0,
+    "von_mises_critical_pa": 15000000.0
+  },
+  "fem_options": {
+    "use_submodeling": true,
+    "submodel_refine_factor": 3,
+    "main_arch_coarse_nodes": 12,
+    "deck_coarse_nodes": 10,
+    "default_live_load_pa": 10000.0,
+    "default_delta_t_c": 0.0
+  },
+  "sensor_definitions": [
+    { "sensor_id": "ARCH-001", "sensor_type": "ARCH", "location_x": 18.51, "location_y": 11.23, "location_z": 0.0 },
+    { "sensor_id": "ARCH-002", "sensor_type": "ARCH", "location_x": 9.255, "location_y": 9.4225, "location_z": 2.4 },
+    { "sensor_id": "ARCH-003", "sensor_type": "ARCH", "location_x": 27.765, "location_y": 9.4225, "location_z": -2.4 },
+    { "sensor_id": "ARCH-004", "sensor_type": "ARCH", "location_x": 3.702, "location_y": 6.0052, "location_z": 0.0 },
+    { "sensor_id": "PIER-001", "sensor_type": "PIER", "location_x": -3.5, "location_y": 4.3, "location_z": 0.0 },
+    { "sensor_id": "PIER-002", "sensor_type": "PIER", "location_x": 40.52, "location_y": 4.3, "location_z": 0.0 },
+    { "sensor_id": "SARCH-L001", "sensor_type": "SARCH", "location_x": 5.0, "location_y": 6.0, "location_z": 1.92 },
+    { "sensor_id": "SARCH-L002", "sensor_type": "SARCH", "location_x": 10.0, "location_y": 6.9, "location_z": -1.92 },
+    { "sensor_id": "SARCH-R001", "sensor_type": "SARCH", "location_x": 27.02, "location_y": 6.9, "location_z": 1.92 },
+    { "sensor_id": "SARCH-R002", "sensor_type": "SARCH", "location_x": 32.02, "location_y": 6.0, "location_z": -1.92 },
+    { "sensor_id": "CRACK-001", "sensor_type": "CRACK", "location_x": 12.957, "location_y": 11.0, "location_z": 2.88 },
+    { "sensor_id": "CRACK-002", "sensor_type": "CRACK", "location_x": 24.063, "location_y": 11.0, "location_z": -2.88 }
+  ],
+  "front_end": {
+    "poll_interval_ms": 10000,
+    "ws_push_interval_ms": 10000,
+    "stress_map_tier_override": "auto",
+    "colors": {
+      "teal": "#1abc9c",
+      "warning": "#f39c12",
+      "orange": "#e67e22",
+      "red": "#e74c3c",
+      "blue": "#3498db",
+      "text": "#ecf0f1",
+      "textDim": "#95a5a6",
+      "grid": "rgba(255,255,255,0.06)"
+    }
+  }
+}
