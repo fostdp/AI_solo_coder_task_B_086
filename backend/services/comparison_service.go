@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"math"
 
 	"zhaozhou-bridge-monitor/models"
 )
@@ -25,7 +24,7 @@ func (cs *ComparisonService) CompareSpandrel(liveLoadPa, deltaTC float64) (*mode
 		SmallArchRiseLarge:  cs.BaseFEM.Geometry.SmallArchRiseLarge,
 		SmallArchRiseSmall:  cs.BaseFEM.Geometry.SmallArchRiseSmall,
 	}
-	openMat := copyMaterial(cs.BaseFEM.Material)
+	openMat := CopyMaterial(cs.BaseFEM.Material)
 	openFEM := NewFEMService(openGeom, openMat)
 	openStresses, err := openFEM.RunFullAnalysis(liveLoadPa, deltaTC)
 	if err != nil {
@@ -41,15 +40,15 @@ func (cs *ComparisonService) CompareSpandrel(liveLoadPa, deltaTC float64) (*mode
 		SmallArchRiseLarge:  0,
 		SmallArchRiseSmall:  0,
 	}
-	solidMat := copyMaterial(cs.BaseFEM.Material)
+	solidMat := CopyMaterial(cs.BaseFEM.Material)
 	solidFEM := NewFEMService(solidGeom, solidMat)
 	solidStresses, err := solidFEM.RunFullAnalysis(liveLoadPa, deltaTC)
 	if err != nil {
 		return nil, fmt.Errorf("solid spandrel FEM failed: %w", err)
 	}
 
-	openResult := buildComparisonCaseResult("敞肩拱", openFEM.Nodes, openFEM.Elements, openStresses, openMat, openGeom, true)
-	solidResult := buildComparisonCaseResult("实肩拱", solidFEM.Nodes, solidFEM.Elements, solidStresses, solidMat, solidGeom, false)
+	openResult := BuildComparisonCaseResult("敞肩拱", openFEM.Nodes, openFEM.Elements, openStresses, openMat, openGeom, true)
+	solidResult := BuildComparisonCaseResult("实肩拱", solidFEM.Nodes, solidFEM.Elements, solidStresses, solidMat, solidGeom, false)
 
 	var stressRatio, dispRatio float64
 	if solidResult.MaxVonMises > 0 {
@@ -85,8 +84,8 @@ func (cs *ComparisonService) CompareSpandrel(liveLoadPa, deltaTC float64) (*mode
 }
 
 func (cs *ComparisonService) CompareMaterials(liveLoadPa, deltaTC float64) (*models.MaterialComparisonResult, error) {
-	ancientMat := copyMaterial(cs.BaseFEM.Material)
-	ancientGeom := copyGeometry(cs.BaseFEM.Geometry)
+	ancientMat := CopyMaterial(cs.BaseFEM.Material)
+	ancientGeom := CopyGeometry(cs.BaseFEM.Geometry)
 	ancientFEM := NewFEMService(ancientGeom, ancientMat)
 	ancientStresses, err := ancientFEM.RunFullAnalysis(liveLoadPa, deltaTC)
 	if err != nil {
@@ -106,15 +105,15 @@ func (cs *ComparisonService) CompareMaterials(liveLoadPa, deltaTC float64) (*mod
 		ThermalExpansionCoeff:  1e-5,
 		CreepCoeff:            1.5,
 	}
-	modernGeom := copyGeometry(cs.BaseFEM.Geometry)
+	modernGeom := CopyGeometry(cs.BaseFEM.Geometry)
 	modernFEM := NewFEMService(modernGeom, modernMat)
 	modernStresses, err := modernFEM.RunFullAnalysis(liveLoadPa, deltaTC)
 	if err != nil {
 		return nil, fmt.Errorf("modern RC FEM failed: %w", err)
 	}
 
-	ancientResult := buildComparisonCaseResult("古石", ancientFEM.Nodes, ancientFEM.Elements, ancientStresses, ancientMat, ancientGeom, true)
-	modernResult := buildComparisonCaseResult("现代RC", modernFEM.Nodes, modernFEM.Elements, modernStresses, modernMat, modernGeom, true)
+	ancientResult := BuildComparisonCaseResult("古石", ancientFEM.Nodes, ancientFEM.Elements, ancientStresses, ancientMat, ancientGeom, true)
+	modernResult := BuildComparisonCaseResult("现代RC", modernFEM.Nodes, modernFEM.Elements, modernStresses, modernMat, modernGeom, true)
 
 	stiffnessRatio := modernMat.ElasticModulus / ancientMat.ElasticModulus
 	strengthRatio := modernMat.CompressiveStrength / ancientMat.CompressiveStrength
@@ -143,71 +142,4 @@ func (cs *ComparisonService) CompareMaterials(liveLoadPa, deltaTC float64) (*mod
 		ModernRC:     modernResult,
 		Summary:      summary,
 	}, nil
-}
-
-func buildComparisonCaseResult(label string, nodes []models.FEMNode, elements []models.FEMElement, stresses []models.FEMStressResult, mat *models.MasonryMaterial, geom *models.BridgeGeometry, hasOpen bool) *models.ComparisonCaseResult {
-	maxVonMises := 0.0
-	for _, s := range stresses {
-		if s.VonMises > maxVonMises {
-			maxVonMises = s.VonMises
-		}
-	}
-
-	maxDisp := 0.0
-	for _, n := range nodes {
-		d := math.Sqrt(n.Dx*n.Dx + n.Dy*n.Dy)
-		if d > maxDisp {
-			maxDisp = d
-		}
-	}
-
-	massKg := 0.0
-	for _, elem := range elements {
-		n1 := nodes[elem.NodeIDs[0]]
-		n2 := nodes[elem.NodeIDs[1]]
-		n3 := nodes[elem.NodeIDs[2]]
-		area := 0.5 * math.Abs((n2.X-n1.X)*(n3.Y-n1.Y)-(n3.X-n1.X)*(n2.Y-n1.Y))
-		massKg += area * elem.Thickness * elem.Material.Density
-	}
-
-	return &models.ComparisonCaseResult{
-		Label:           label,
-		Material:        mat,
-		Geometry:        geom,
-		Nodes:           nodes,
-		Elements:        elements,
-		Stresses:        stresses,
-		MaxVonMises:     maxVonMises,
-		MaxDisplacement: maxDisp,
-		MassKg:          massKg,
-		HasOpenSpandrel: hasOpen,
-	}
-}
-
-func copyMaterial(m *models.MasonryMaterial) *models.MasonryMaterial {
-	return &models.MasonryMaterial{
-		MaterialName:           m.MaterialName,
-		Source:                 m.Source,
-		Grade:                  m.Grade,
-		ElasticModulus:         m.ElasticModulus,
-		PoissonRatio:          m.PoissonRatio,
-		Density:               m.Density,
-		CompressiveStrength:    m.CompressiveStrength,
-		CompressiveStrengthCube: m.CompressiveStrengthCube,
-		TensileStrength:       m.TensileStrength,
-		ThermalExpansionCoeff: m.ThermalExpansionCoeff,
-		CreepCoeff:            m.CreepCoeff,
-	}
-}
-
-func copyGeometry(g *models.BridgeGeometry) *models.BridgeGeometry {
-	return &models.BridgeGeometry{
-		MainSpan:            g.MainSpan,
-		MainRise:            g.MainRise,
-		Width:               g.Width,
-		SmallArchSpanLarge:  g.SmallArchSpanLarge,
-		SmallArchSpanSmall:  g.SmallArchSpanSmall,
-		SmallArchRiseLarge:  g.SmallArchRiseLarge,
-		SmallArchRiseSmall:  g.SmallArchRiseSmall,
-	}
 }

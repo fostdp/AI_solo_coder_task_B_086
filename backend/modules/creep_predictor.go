@@ -7,7 +7,6 @@ import (
 
 	"zhaozhou-bridge-monitor/config"
 	"zhaozhou-bridge-monitor/database"
-	"zhaozhou-bridge-monitor/models"
 	"zhaozhou-bridge-monitor/services"
 )
 

@@ -22,6 +22,10 @@ import (
 	"zhaozhou-bridge-monitor/database"
 	"zhaozhou-bridge-monitor/models"
 	"zhaozhou-bridge-monitor/modules"
+	"zhaozhou-bridge-monitor/modules/arch_comparator"
+	"zhaozhou-bridge-monitor/modules/era_comparator"
+	"zhaozhou-bridge-monitor/modules/retrofit_simulator"
+	"zhaozhou-bridge-monitor/modules/vr_bridge_builder"
 	"zhaozhou-bridge-monitor/services"
 )
 
@@ -406,6 +410,13 @@ func main() {
 	reinforcementSvc := services.NewReinforcementService(feaSimulator.FEMService)
 	virtualBridgeSvc := services.NewVirtualBridgeService()
 
+	workerPool := services.NewFEMWorkerPool(4)
+
+	archComp := arch_comparator.NewArchComparator(workerPool)
+	eraComp := era_comparator.NewEraComparator(workerPool)
+	retrofitSim := retrofit_simulator.NewRetrofitSimulator(workerPool)
+	vrBuilder := vr_bridge_builder.NewVRBridgeBuilder(workerPool)
+
 	modules.SetGoroutineFunc(func() int { return runtime.NumGoroutine() })
 
 	r := mux.NewRouter()
@@ -433,6 +444,11 @@ func main() {
 	api.HandleFunc("/comparison/materials", makeMaterialComparisonHandler(comparisonSvc)).Methods("GET", "POST")
 	api.HandleFunc("/reinforcement/simulate", makeReinforcementSimulateHandler(reinforcementSvc)).Methods("POST")
 	api.HandleFunc("/virtual-bridge/design", makeVirtualBridgeDesignHandler(virtualBridgeSvc)).Methods("POST")
+
+	archComp.RegisterRoutes(r)
+	eraComp.RegisterRoutes(r)
+	retrofitSim.RegisterRoutes(r)
+	vrBuilder.RegisterRoutes(r)
 
 	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./frontend")))
 

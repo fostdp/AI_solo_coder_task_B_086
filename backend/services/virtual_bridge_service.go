@@ -131,7 +131,7 @@ func (v *VirtualBridgeService) DesignAndTest(design models.VirtualBridgeDesign) 
 	}
 
 	fem := NewFEMService(geom, mat)
-	fem.UseSubmodeling = true
+	fem.UseSubmodeling = false
 
 	liveLoadPa := design.LiveLoadKPa * 1000.0
 	stresses, err := fem.RunFullAnalysis(liveLoadPa, 0)

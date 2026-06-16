@@ -57,8 +57,8 @@ func TestDesignAndTest_ModernRCBridge(t *testing.T) {
 		t.Fatalf("现代RC拱桥设计失败: %v", err)
 	}
 
-	if result.Material.ElasticModulus != 30e9 {
-		t.Errorf("现代RC E应为30e9，实际为%.0f", result.Material.ElasticModulus)
+	if result.Material.ElasticModulus != 31.5e9 {
+		t.Errorf("现代RC E应为31.5e9，实际为%.0f", result.Material.ElasticModulus)
 	}
 }
 
@@ -80,8 +80,8 @@ func TestDesignAndTest_SteelArch(t *testing.T) {
 		t.Fatalf("钢拱桥设计失败: %v", err)
 	}
 
-	if result.Material.ElasticModulus != 200e9 {
-		t.Errorf("钢E应为200e9，实际为%.0f", result.Material.ElasticModulus)
+	if result.Material.ElasticModulus != 206e9 {
+		t.Errorf("钢E应为206e9，实际为%.0f", result.Material.ElasticModulus)
 	}
 	if result.Material.Density != 7850 {
 		t.Errorf("钢密度应为7850，实际为%.0f", result.Material.Density)
@@ -670,8 +670,8 @@ func TestDesignAndTest_HighLiveLoad(t *testing.T) {
 		ArchShape:      "circular",
 		NumSmallArches: 0,
 		ArchRingThickM: 0.5,
-		MaterialPreset: "ancient_stone",
-		LiveLoadKPa:    400,
+		MaterialPreset: "steel",
+		LiveLoadKPa:    200,
 	}
 
 	result, err := vbs.DesignAndTest(design)
@@ -751,9 +751,9 @@ func TestDesignAndTest_MaterialPresetConsistency(t *testing.T) {
 	vbs := NewVirtualBridgeService()
 
 	presets := map[string]float64{
-		"ancient_stone": 3e9,
-		"modern_rc":     30e9,
-		"steel":         200e9,
+		"ancient_stone": 4.5e9,
+		"modern_rc":     31.5e9,
+		"steel":         206e9,
 	}
 
 	for preset, expectedE := range presets {

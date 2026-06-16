@@ -1,0 +1,43 @@
+﻿--- FAIL: TestCompareSpandrel_MassReduction (0.02s)
+    comparison_service_test.go:75: 鏁炶偐鎷辫川閲忓簲灏忎簬瀹炶偐鎷憋紝浣?open=270977.66, solid=270977.66
+    comparison_service_test.go:80: 璐ㄩ噺鍑忓皯鐜囧簲澶т簬0锛屽疄闄呬负0.00%
+--- FAIL: TestCompareSpandrel_ZeroLiveLoad (0.01s)
+    comparison_service_test.go:141: 闆舵椿杞戒笅璐ㄩ噺鍑忓皯鐜囦粛搴旀湁鏁?--- FAIL: TestCompareMaterials_ZeroLiveLoad (0.01s)
+    comparison_service_test.go:309: 鍒氬害姣斿簲鎭掍负10锛屼笌鑽疯浇鏃犲叧锛屽疄闄呬负6.67
+--- FAIL: TestSimulateReinforcement_SafetyFactorIncrease (0.01s)
+    reinforcement_service_test.go:91: 鍔犲浐鍚庡畨鍏ㄧ郴鏁板簲鎻愬崌锛宐efore=0.000, after=0.000
+--- FAIL: TestSimulateReinforcement_ManyLayers (0.01s)
+    reinforcement_service_test.go:290: 澶ч噺CFRP搴旀彁鍗囧畨鍏ㄧ郴鏁?--- FAIL: TestSimulateReinforcement_BeforeAfterConsistency (0.01s)
+    reinforcement_service_test.go:443: 鍔犲浐鍓嶅悗鑺傜偣鏁板簲鐩稿悓锛宐efore=422, after=46
+    reinforcement_service_test.go:447: 鍔犲浐鍓嶅悗鍗曞厓鏁板簲鐩稿悓锛宐efore=638, after=62
+--- FAIL: TestDesignAndTest_ModernRCBridge (0.01s)
+    virtual_bridge_service_test.go:61: 鐜颁唬RC E搴斾负30e9锛屽疄闄呬负31500000000
+--- FAIL: TestDesignAndTest_SteelArch (0.01s)
+    virtual_bridge_service_test.go:84: 閽搴斾负200e9锛屽疄闄呬负206000000000
+--- FAIL: TestDesignAndTest_AllArchShapes (0.00s)
+    --- FAIL: TestDesignAndTest_AllArchShapes/parabolic (0.00s)
+panic: runtime error: index out of range [12] with length 12 [recovered, repanicked]
+
+goroutine 187 [running]:
+testing.tRunner.func1.2({0x7ff730ddbf60, 0x2644586b7038})
+	C:/Users/10996/sdk/go1.26.2/src/testing/testing.go:1974 +0x239
+testing.tRunner.func1()
+	C:/Users/10996/sdk/go1.26.2/src/testing/testing.go:1977 +0x349
+panic({0x7ff730ddbf60?, 0x2644586b7038?})
+	C:/Users/10996/sdk/go1.26.2/src/runtime/panic.go:860 +0x13a
+zhaozhou-bridge-monitor/services.(*FEMService).GenerateGlobalCoarseMesh(0x2644587103c0)
+	C:/AI_solo_coder_task_A/AI_solo_coder_task_B_086/backend/services/fem_structural.go:187 +0x3fcf
+zhaozhou-bridge-monitor/services.(*FEMService).GenerateMesh(0x2644587103c0)
+	C:/AI_solo_coder_task_A/AI_solo_coder_task_B_086/backend/services/fem_structural.go:360 +0x87
+zhaozhou-bridge-monitor/services.(*FEMService).RunFullAnalysis(0x2644587103c0, 0x40c3880000000000, 0x0)
+	C:/AI_solo_coder_task_A/AI_solo_coder_task_B_086/backend/services/fem_structural.go:1407 +0x8b
+zhaozhou-bridge-monitor/services.(*VirtualBridgeService).DesignAndTest(0x7ff730f611b8?, {0x403e000000000000, 0x4018000000000000, {0x7ff730df9bea, 0x9}, 0x2, 0x3ff0000000000000, {0x7ff730dfb42f, 0xd}, 0x4024000000000000})
+	C:/AI_solo_coder_task_A/AI_solo_coder_task_B_086/backend/services/virtual_bridge_service.go:137 +0xae6
+zhaozhou-bridge-monitor/services.TestDesignAndTest_AllArchShapes.func1(0x26445870e600)
+	C:/AI_solo_coder_task_A/AI_solo_coder_task_B_086/backend/services/virtual_bridge_service_test.go:106 +0xbd
+testing.tRunner(0x26445870e600, 0x2644586924b0)
+	C:/Users/10996/sdk/go1.26.2/src/testing/testing.go:2036 +0xc3
+created by testing.(*T).Run in goroutine 186
+	C:/Users/10996/sdk/go1.26.2/src/testing/testing.go:2101 +0x4a9
+FAIL	zhaozhou-bridge-monitor/services	0.469s
+FAIL

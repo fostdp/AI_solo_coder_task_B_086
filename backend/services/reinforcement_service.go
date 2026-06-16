@@ -12,7 +12,7 @@ const (
 	DefaultCFRPTensileStrengthPa    = 3400e6
 	DefaultCFRPThicknessPerLayerM   = 0.000167
 	DefaultCFRPThicknessPerLayerMM  = 0.167
-	DefaultCFRPDensityKgM3          = 1800
+	DefaultCFRPDensityKgM3          = 1800.0
 	DefaultBondEfficiencyFactor     = 0.75
 	DefaultEffectiveBondLengthMM    = 150
 	DefaultInterfaceShearStrengthPa = 8e6
@@ -27,18 +27,20 @@ func NewReinforcementService(base *FEMService) *ReinforcementService {
 }
 
 func (rs *ReinforcementService) SimulateReinforcement(configs []models.ReinforcementConfig, liveLoadPa, deltaTC float64) (*models.ReinforcementSimulationResult, error) {
-	beforeGeom := copyGeometry(rs.BaseFEM.Geometry)
-	beforeMat := copyMaterial(rs.BaseFEM.Material)
+	beforeGeom := CopyGeometry(rs.BaseFEM.Geometry)
+	beforeMat := CopyMaterial(rs.BaseFEM.Material)
 	beforeFEM := NewFEMService(beforeGeom, beforeMat)
+	beforeFEM.UseSubmodeling = false
 	beforeStresses, err := beforeFEM.RunFullAnalysis(liveLoadPa, deltaTC)
 	if err != nil {
 		return nil, fmt.Errorf("before reinforcement FEM failed: %w", err)
 	}
-	beforeResult := buildComparisonCaseResult("加固前", beforeFEM.Nodes, beforeFEM.Elements, beforeStresses, beforeMat, beforeGeom, true)
+	beforeResult := BuildComparisonCaseResult("加固前", beforeFEM.Nodes, beforeFEM.Elements, beforeStresses, beforeMat, beforeGeom, true)
 
-	afterGeom := copyGeometry(rs.BaseFEM.Geometry)
-	afterMat := copyMaterial(rs.BaseFEM.Material)
+	afterGeom := CopyGeometry(rs.BaseFEM.Geometry)
+	afterMat := CopyMaterial(rs.BaseFEM.Material)
 	afterFEM := NewFEMService(afterGeom, afterMat)
+	afterFEM.UseSubmodeling = false
 	if err := afterFEM.GenerateMesh(); err != nil {
 		return nil, fmt.Errorf("after reinforcement mesh generation failed: %w", err)
 	}
@@ -76,7 +78,7 @@ func (rs *ReinforcementService) SimulateReinforcement(configs []models.Reinforce
 
 		for i := range afterFEM.Elements {
 			elem := &afterFEM.Elements[i]
-			if !elemInZone(elem, afterFEM.Nodes, cfg.Zone, span, rise) {
+			if !ElemInZone(elem, afterFEM.Nodes, cfg.Zone, span, rise) {
 				continue
 			}
 
@@ -132,7 +134,7 @@ func (rs *ReinforcementService) SimulateReinforcement(configs []models.Reinforce
 		return nil, fmt.Errorf("after reinforcement solve failed: %w", err)
 	}
 	afterStresses := afterFEM.ComputeElementStresses()
-	afterResult := buildComparisonCaseResult("加固后", afterFEM.Nodes, afterFEM.Elements, afterStresses, afterMat, afterGeom, true)
+	afterResult := BuildComparisonCaseResult("加固后", afterFEM.Nodes, afterFEM.Elements, afterStresses, afterMat, afterGeom, true)
 
 	var stressReductionPct, dispReductionPct, stiffnessIncreasePct float64
 	if beforeResult.MaxVonMises > 0 {
@@ -216,27 +218,4 @@ func (rs *ReinforcementService) SimulateReinforcement(configs []models.Reinforce
 		CFRPProperties: cfrpProps,
 		Summary:        summary,
 	}, nil
-}
-
-func elemInZone(elem *models.FEMElement, nodes []models.FEMNode, zone string, span, rise float64) bool {
-	var xCenter, yCenter float64
-	for _, nid := range elem.NodeIDs {
-		xCenter += nodes[nid].X
-		yCenter += nodes[nid].Y
-	}
-	xCenter /= 3.0
-	yCenter /= 3.0
-
-	switch zone {
-	case "main_arch":
-		return xCenter >= 0 && xCenter <= span && yCenter > rise*0.3
-	case "left_spandrel":
-		return xCenter >= 0 && xCenter <= span*0.35
-	case "right_spandrel":
-		return xCenter >= span*0.65 && xCenter <= span
-	case "full":
-		return true
-	default:
-		return false
-	}
 }

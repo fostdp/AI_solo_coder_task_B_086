@@ -1,0 +1,23 @@
+﻿go : go: downloading github.com/eclipse/paho.mqtt.golang v1.4.3
+所在位置 行:1 字符: 63
++ ... I_solo_coder_task_B_086\backend ; go test -v ./services/ 2>&1 | Out-F ...
++                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (go: downloading...t.golang v1.4.3 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+go: downloading github.com/lib/pq v1.10.9
+# zhaozhou-bridge-monitor/services
+services\alert_service.go:10:2: github.com/eclipse/paho.mqtt.golang@v1.4.3: Get
+ "https://proxy.golang.org/github.com/eclipse/paho.mqtt.golang/@v/v1.4.3.zip": 
+dial tcp [2404:6800:4012:6::2011]:443: connectex: A connection attempt failed b
+ecause the connected party did not properly respond after a period of time, or 
+established connection failed because connected host has failed to respond.
+# zhaozhou-bridge-monitor/services
+database\db.go:10:2: github.com/lib/pq@v1.10.9: Get "https://proxy.golang.org/g
+ithub.com/lib/pq/@v/v1.10.9.zip": dial tcp [2404:6800:4012:6::2011]:443: connec
+tex: A connection attempt failed because the connected party did not properly r
+espond after a period of time, or established connection failed because connect
+ed host has failed to respond.
+FAIL	zhaozhou-bridge-monitor/services [setup failed]
+FAIL

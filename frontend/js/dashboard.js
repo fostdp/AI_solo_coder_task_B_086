@@ -22,9 +22,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     CreepPanel.onDataUpdated = function(readings) {
     };
 
-    window.ComparisonPanel.init();
-    window.ReinforcementPanel.init();
-    window.VirtualBridge.init();
+    window.ArchComparator.init();
+    window.EraComparator.init();
+    window.RetrofitSimulator.init();
+    window.VRBridgeBuilder.init();
 
     initFeatureNav();
     initRangeDisplay();

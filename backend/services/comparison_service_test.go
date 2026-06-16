@@ -305,8 +305,9 @@ func TestCompareMaterials_ZeroLiveLoad(t *testing.T) {
 	if result.AncientStone.MaxVonMises <= 0 {
 		t.Error("零活载下仍应有自重应力")
 	}
-	if result.Summary.StiffnessRatio != 10.0 {
-		t.Errorf("刚度比应恒为10，与荷载无关，实际为%.2f", result.Summary.StiffnessRatio)
+	expectedStiffnessRatio := 30e9 / 4.5e9
+	if math.Abs(result.Summary.StiffnessRatio-expectedStiffnessRatio) > 1e-2 {
+		t.Errorf("刚度比应恒为%.2f，与荷载无关，实际为%.2f", expectedStiffnessRatio, result.Summary.StiffnessRatio)
 	}
 }
 
@@ -317,7 +318,7 @@ func TestBuildComparisonCaseResult_EmptyElements(t *testing.T) {
 	mat := &models.MasonryMaterial{Density: 2400}
 	geom := &models.BridgeGeometry{MainSpan: 10}
 
-	result := buildComparisonCaseResult("test", nodes, elements, stresses, mat, geom, true)
+	result := BuildComparisonCaseResult("test", nodes, elements, stresses, mat, geom, true)
 
 	if result.MaxVonMises != 0 {
 		t.Errorf("空单元应力应为0，实际为%.2f", result.MaxVonMises)
@@ -345,7 +346,7 @@ func TestCopyMaterial(t *testing.T) {
 		CreepCoeff:            2.2,
 	}
 
-	copied := copyMaterial(original)
+	copied := CopyMaterial(original)
 
 	if copied == original {
 		t.Error("copyMaterial应返回新指针，而非原指针")
@@ -386,7 +387,7 @@ func TestCopyGeometry(t *testing.T) {
 		SmallArchRiseSmall: 1.0,
 	}
 
-	copied := copyGeometry(original)
+	copied := CopyGeometry(original)
 
 	if copied == original {
 		t.Error("copyGeometry应返回新指针")

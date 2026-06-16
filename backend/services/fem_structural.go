@@ -165,6 +165,8 @@ func (f *FEMService) GenerateGlobalCoarseMesh() error {
 	pierMidLeft := f.addGlobalNode(0, -pierHeight/2)
 	pierMidRight := f.addGlobalNode(span, -pierHeight/2)
 
+	isOpenSpandrel := f.Geometry.SmallArchSpanLarge > 0
+
 	spandrelConfigs := []struct {
 		xStart, xEnd float64
 	}{
@@ -174,12 +176,19 @@ func (f *FEMService) GenerateGlobalCoarseMesh() error {
 		{32.2, 35.0},
 	}
 
-	for _, sc := range spandrelConfigs {
+	if isOpenSpandrel {
+		for _, sc := range spandrelConfigs {
 		xMid := (sc.xStart + sc.xEnd) / 2.0
 		archIdxStart := int(math.Round(float64(numArchNodes-1) * sc.xStart / span))
 		archIdxEnd := int(math.Round(float64(numArchNodes-1) * sc.xEnd / span))
 		if archIdxStart < 0 {
 			archIdxStart = 0
+		}
+		if archIdxStart >= numArchNodes {
+			archIdxStart = numArchNodes - 1
+		}
+		if archIdxEnd < 0 {
+			archIdxEnd = 0
 		}
 		if archIdxEnd >= numArchNodes {
 			archIdxEnd = numArchNodes - 1
@@ -192,6 +201,12 @@ func (f *FEMService) GenerateGlobalCoarseMesh() error {
 		deckIdxEnd := int(math.Round(float64(numDeckNodes-1) * sc.xEnd / span))
 		if deckIdxStart < 0 {
 			deckIdxStart = 0
+		}
+		if deckIdxStart >= numDeckNodes {
+			deckIdxStart = numDeckNodes - 1
+		}
+		if deckIdxEnd < 0 {
+			deckIdxEnd = 0
 		}
 		if deckIdxEnd >= numDeckNodes {
 			deckIdxEnd = numDeckNodes - 1
@@ -219,6 +234,7 @@ func (f *FEMService) GenerateGlobalCoarseMesh() error {
 		addGlobalTri(topMidID, deckMid, deckStart, 0.5)
 		addGlobalTri(topMidID, deckEnd, deckMid, 0.5)
 		addGlobalTri(archTopEnd, deckEnd, topMidID, 0.5)
+		}
 	}
 
 	elemID := len(f.GlobalElements)
@@ -249,10 +265,12 @@ func (f *FEMService) GenerateGlobalCoarseMesh() error {
 		x2 := t2 * span
 		xMidSeg := (x1 + x2) / 2.0
 		inSpandrel := false
-		for si := 0; si < len(spandrelXStarts); si++ {
-			if xMidSeg >= spandrelXStarts[si]-0.1 && xMidSeg <= spandrelXEnds[si]+0.1 {
-				inSpandrel = true
-				break
+		if isOpenSpandrel {
+			for si := 0; si < len(spandrelXStarts); si++ {
+				if xMidSeg >= spandrelXStarts[si]-0.1 && xMidSeg <= spandrelXEnds[si]+0.1 {
+					inSpandrel = true
+					break
+				}
 			}
 		}
 		if !inSpandrel {
@@ -421,6 +439,9 @@ func (f *FEMService) GenerateMesh() error {
 	}
 
 	for _, cfg := range smallArchConfigs {
+		if cfg.span <= 0 {
+			continue
+		}
 		saNodes := make([]int, 0)
 		numSAnodes := 8
 		for i := 0; i < numSAnodes; i++ {
@@ -957,16 +978,16 @@ func (f *FEMService) BuildStiffnessMatrix() error {
 		}
 	}
 
-	E := f.Material.ElasticModulus
-	nu := f.Material.PoissonRatio
-	D := f.buildConstitutiveMatrix(E, nu)
-
 	for _, elem := range f.Elements {
 		n1 := f.Nodes[elem.NodeIDs[0]]
 		n2 := f.Nodes[elem.NodeIDs[1]]
 		n3 := f.Nodes[elem.NodeIDs[2]]
 
 		B, area := f.buildStrainDisplacementMatrix(n1, n2, n3)
+
+		E := elem.Material.ElasticModulus
+		nu := elem.Material.PoissonRatio
+		D := f.buildConstitutiveMatrix(E, nu)
 
 		t := elem.Thickness
 		Ke := f.computeElementStiffness(B, D, t, area)
@@ -1099,7 +1120,6 @@ func (f *FEMService) ApplyGravityLoad() error {
 }
 
 func (f *FEMService) ApplyLiveLoad(laneLoad float64) error {
-	span := f.Geometry.MainSpan
 	width := f.Geometry.Width
 	deckNodes := make([]int, 0)
 
@@ -1308,10 +1328,6 @@ func (f *FEMService) ComputeElementStresses() []models.FEMStressResult {
 	results := make([]models.FEMStressResult, 0, len(f.Elements))
 	now := time.Now()
 
-	E := f.Material.ElasticModulus
-	nu := f.Material.PoissonRatio
-	alpha := f.Material.ThermalExpansionCoeff
-	D := f.buildConstitutiveMatrix(E, nu)
 	deltaT := f.thermalDeltaT
 
 	for _, elem := range f.Elements {
@@ -1336,6 +1352,11 @@ func (f *FEMService) ComputeElementStresses() []models.FEMStressResult {
 				eps[i] += B[i][j] * u[j]
 			}
 		}
+
+		E := elem.Material.ElasticModulus
+		nu := elem.Material.PoissonRatio
+		alpha := elem.Material.ThermalExpansionCoeff
+		D := f.buildConstitutiveMatrix(E, nu)
 
 		eps[0] -= alpha * deltaT
 		eps[1] -= alpha * deltaT
@@ -1521,4 +1542,70 @@ func sortStressResults(arr []models.FEMStressResult) {
 			}
 		}
 	}
+}
+
+type AsyncFEMResult struct {
+	Stresses []models.FEMStressResult
+	Nodes    []models.FEMNode
+	Elements []models.FEMElement
+	Error    error
+}
+
+func (f *FEMService) AsyncRunFullAnalysis(liveLoad, deltaT float64) <-chan AsyncFEMResult {
+	resultCh := make(chan AsyncFEMResult, 1)
+	go func() {
+		defer close(resultCh)
+		stresses, err := f.RunFullAnalysis(liveLoad, deltaT)
+		nodesCopy := make([]models.FEMNode, len(f.Nodes))
+		elemsCopy := make([]models.FEMElement, len(f.Elements))
+		copy(nodesCopy, f.Nodes)
+		for i := range f.Elements {
+			elemsCopy[i] = f.Elements[i]
+			elemsCopy[i].Material = f.Elements[i].Material
+		}
+		resultCh <- AsyncFEMResult{
+			Stresses: stresses,
+			Nodes:    nodesCopy,
+			Elements: elemsCopy,
+			Error:    err,
+		}
+	}()
+	return resultCh
+}
+
+type FEMWorkerPool struct {
+	jobCh    chan func()
+	workerN  int
+	stopCh   chan struct{}
+}
+
+func NewFEMWorkerPool(workerCount int) *FEMWorkerPool {
+	pool := &FEMWorkerPool{
+		jobCh:   make(chan func(), 100),
+		workerN: workerCount,
+		stopCh:  make(chan struct{}),
+	}
+	for i := 0; i < workerCount; i++ {
+		go pool.workerLoop(i)
+	}
+	return pool
+}
+
+func (p *FEMWorkerPool) workerLoop(id int) {
+	for {
+		select {
+		case job := <-p.jobCh:
+			job()
+		case <-p.stopCh:
+			return
+		}
+	}
+}
+
+func (p *FEMWorkerPool) Submit(job func()) {
+	p.jobCh <- job
+}
+
+func (p *FEMWorkerPool) Stop() {
+	close(p.stopCh)
 }

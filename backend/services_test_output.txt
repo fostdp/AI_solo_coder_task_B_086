@@ -1,0 +1,13 @@
+﻿go : # zhaozhou-bridge-monitor/services
+所在位置 行:1 字符: 160
++ ... n,direct" ; go test -v -count=1 ./services/ -timeout 120s 2>&1 | Out- ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (# zhaozhou-bridge-monitor/service 
+   s:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+# [zhaozhou-bridge-monitor/services]
+services\reinforcement_service_test.go:174:29: (*testing.common).Errorf format 
+%.0f has arg DefaultCFRPDensityKgM3 of wrong type int
+FAIL	zhaozhou-bridge-monitor/services [build failed]
+FAIL

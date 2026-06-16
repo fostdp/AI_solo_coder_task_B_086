@@ -349,12 +349,12 @@ func TestElemInZone_MainArch(t *testing.T) {
 		{X: 12, Y: 5.5},
 		{X: 11, Y: 6},
 	}
-	elem := &models.FEMElement{NodeIDs: []int{0, 1, 2}}
+	elem := &models.FEMElement{NodeIDs: [3]int{0, 1, 2}}
 
 	span := 37.02
 	rise := 7.23
 
-	if !elemInZone(elem, nodes, "main_arch", span, rise) {
+	if !ElemInZone(elem, nodes, "main_arch", span, rise) {
 		t.Error("拱顶附近的单元应属于main_arch")
 	}
 }
@@ -365,15 +365,15 @@ func TestElemInZone_LeftSpandrel(t *testing.T) {
 		{X: 3, Y: 1},
 		{X: 2, Y: 1.5},
 	}
-	elem := &models.FEMElement{NodeIDs: []int{0, 1, 2}}
+	elem := &models.FEMElement{NodeIDs: [3]int{0, 1, 2}}
 
 	span := 37.02
 	rise := 7.23
 
-	if !elemInZone(elem, nodes, "left_spandrel", span, rise) {
+	if !ElemInZone(elem, nodes, "left_spandrel", span, rise) {
 		t.Error("左端单元应属于left_spandrel")
 	}
-	if elemInZone(elem, nodes, "right_spandrel", span, rise) {
+	if ElemInZone(elem, nodes, "right_spandrel", span, rise) {
 		t.Error("左端单元不应属于right_spandrel")
 	}
 }
@@ -384,12 +384,12 @@ func TestElemInZone_RightSpandrel(t *testing.T) {
 		{X: 36, Y: 0.5},
 		{X: 35, Y: 1.5},
 	}
-	elem := &models.FEMElement{NodeIDs: []int{0, 1, 2}}
+	elem := &models.FEMElement{NodeIDs: [3]int{0, 1, 2}}
 
 	span := 37.02
 	rise := 7.23
 
-	if !elemInZone(elem, nodes, "right_spandrel", span, rise) {
+	if !ElemInZone(elem, nodes, "right_spandrel", span, rise) {
 		t.Error("右端单元应属于right_spandrel")
 	}
 }
@@ -400,12 +400,12 @@ func TestElemInZone_Full(t *testing.T) {
 		{X: 12, Y: 3},
 		{X: 11, Y: 4},
 	}
-	elem := &models.FEMElement{NodeIDs: []int{0, 1, 2}}
+	elem := &models.FEMElement{NodeIDs: [3]int{0, 1, 2}}
 
 	span := 37.02
 	rise := 7.23
 
-	if !elemInZone(elem, nodes, "full", span, rise) {
+	if !ElemInZone(elem, nodes, "full", span, rise) {
 		t.Error("任何单元都应属于full zone")
 	}
 }
@@ -416,12 +416,12 @@ func TestElemInZone_InvalidZone(t *testing.T) {
 		{X: 12, Y: 3},
 		{X: 11, Y: 4},
 	}
-	elem := &models.FEMElement{NodeIDs: []int{0, 1, 2}}
+	elem := &models.FEMElement{NodeIDs: [3]int{0, 1, 2}}
 
 	span := 37.02
 	rise := 7.23
 
-	if elemInZone(elem, nodes, "unknown_zone", span, rise) {
+	if ElemInZone(elem, nodes, "unknown_zone", span, rise) {
 		t.Error("无效zone应返回false")
 	}
 }
